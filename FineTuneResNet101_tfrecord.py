@@ -21,16 +21,13 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 # Import data
 # change the dataset here###
-dataset = 'AWA2'
+dataset = 'imagenet'
 # color_diff_121, none
 preprocess = 'none'
 ##############################
 
 batch_size = 16
-# train_path = './data/{}/tfrecord/{}/train.tfrecords'.format(dataset, preprocess)
-train_path = './data/{}/test_draw/test_draw_color_diff_121.tfrecords'.format(dataset, preprocess)
-# val_path = './data/{}/tfrecord/{}/val.tfrecords'.format(dataset, preprocess)
-val_path = './data/{}/test_draw/test_draw_color_diff_121.tfrecords'.format(dataset, preprocess)
+directory = './data/{}/{}/'.format(dataset, preprocess)
 IMG_SHAPE = 224
 
 epochs = 15
@@ -52,6 +49,12 @@ elif dataset == 'AWA2':
     class_attr_dim = 85
     class_num = 50
     seen_class_num = 40
+    unseen_class_num = 10
+elif dataset == 'imagenet':
+    class_attr_shape = (85,)
+    class_attr_dim = 85
+    class_num = 1000
+    seen_class_num = 4
     unseen_class_num = 10
 elif dataset == 'plant':
     class_attr_shape = (46,)
@@ -96,8 +99,8 @@ elif preprocess == 'none':
 # 1 tfrecord dataset
 def tf_parse1(raw_example):
     parsed = tf.train.Example.FromString(raw_example.numpy())
-    feature = np.array(parsed.features.feature['X'].float_list.value)
-    label = np.array(parsed.features.feature['Y'].int64_list.value)
+    feature = np.array(parsed.features.feature['feature'].float_list.value)
+    label = np.array(parsed.features.feature['label'].int64_list.value)
     return feature, label
 
 
@@ -105,17 +108,19 @@ def tf_parse1(raw_example):
 def tf_parse2(raw_example):
     example = tf.io.parse_example(
         raw_example[tf.newaxis], {
-            'X': tf.io.FixedLenFeature(shape=(1, IMG_SHAPE*IMG_SHAPE*IMG_channel), dtype=tf.float32),
-            'Y': tf.io.FixedLenFeature(shape=1, dtype=tf.int64)
+            'feature': tf.io.FixedLenFeature(shape=(1, IMG_SHAPE*IMG_SHAPE*IMG_channel), dtype=tf.float32),
+            'label': tf.io.FixedLenFeature(shape=seen_class_num, dtype=tf.int64)
         })
-    feature = tf.reshape(example['X'][0], [1, IMG_SHAPE, IMG_SHAPE, IMG_channel])
+    feature = tf.reshape(example['feature'][0], [IMG_SHAPE, IMG_SHAPE, IMG_channel])
     feature = preprocess_input(feature)
-    label = example['Y'][0]
+    label = example['label'][0]
     return feature, label
 
 
-train_dataset = tf.data.TFRecordDataset(train_path)
-val_dataset = tf.data.TFRecordDataset(val_path)
+train_files_list = tf.data.Dataset.list_files(directory + dataset + '_train.tfrecord*')
+val_files_list = tf.data.Dataset.list_files(directory + dataset + '_val.tfrecord*')
+train_dataset = tf.data.TFRecordDataset(train_files_list)
+val_dataset = tf.data.TFRecordDataset(val_files_list)
 # for serialized_example in val_dataset.take(-1):
 #     example = tf.train.Example()
 #     example.ParseFromString(serialized_example.numpy())
@@ -124,7 +129,7 @@ val_dataset = tf.data.TFRecordDataset(val_path)
 #     a = 0
 train_dataset = train_dataset.map(tf_parse2)
 val_dataset = val_dataset.map(tf_parse2)
-feature, label = next(iter(val_dataset.batch(1)))
+feature, label = next(iter(val_dataset.batch(8)))
 a = 0
 
 ## Fine tune or Retrain ResNet101
@@ -157,7 +162,7 @@ model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-model.fit(train_dataset, batch_size=batch_size, epochs=epochs, validation_data=val_dataset, callbacks=[early_stopping])
+model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[early_stopping])
 
 epochs = 10
 
