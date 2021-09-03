@@ -50,12 +50,16 @@ elif dataset == 'AWA2':
     class_num = 50
     seen_class_num = 40
     unseen_class_num = 10
+    train_cardinality = 58176
+    val_cardinality = 15872
 elif dataset == 'imagenet':
     class_attr_shape = (85,)
     class_attr_dim = 85
     class_num = 1000
     seen_class_num = 4
     unseen_class_num = 10
+    train_cardinality = 400
+    val_cardinality = 400
 elif dataset == 'plant':
     class_attr_shape = (46,)
     class_attr_dim = 46
@@ -119,6 +123,8 @@ def tf_parse2(raw_example):
 
 train_files_list = tf.data.Dataset.list_files(directory + dataset + '_train.tfrecord*')
 val_files_list = tf.data.Dataset.list_files(directory + dataset + '_val.tfrecord*')
+# for f in train_files_list.take(5):
+#     print(f.numpy())
 train_dataset = tf.data.TFRecordDataset(train_files_list)
 val_dataset = tf.data.TFRecordDataset(val_files_list)
 # for serialized_example in val_dataset.take(-1):
@@ -129,8 +135,12 @@ val_dataset = tf.data.TFRecordDataset(val_files_list)
 #     a = 0
 train_dataset = train_dataset.map(tf_parse2)
 val_dataset = val_dataset.map(tf_parse2)
-feature, label = next(iter(val_dataset.batch(8)))
-a = 0
+train_dataset = train_dataset.batch(batch_size)
+val_dataset = val_dataset.batch(batch_size)
+train_dataset = train_dataset.repeat(15)
+val_dataset = val_dataset.repeat(15)
+# feature, label = next(iter(val_dataset.batch(8)))
+# a = 0
 
 ## Fine tune or Retrain ResNet101
 base_model = ResNet101(weights='imagenet', include_top=False)
@@ -155,14 +165,19 @@ model = Model(inputs=base_model.input, outputs=predictions)
 # compile
 # model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
 #               , loss='categorical_crossentropy',metrics=['accuracy'])
-keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
-                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
+# keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
+#                            rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
+STEP_SIZE_TRAIN = train_cardinality // batch_size
+STEP_SIZE_VALID = val_cardinality // batch_size
+
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[early_stopping])
+model.fit(train_dataset, epochs=epochs, validation_data=val_dataset,
+          steps_per_epoch=STEP_SIZE_TRAIN, callbacks=[early_stopping])
+# model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[early_stopping])
 
 epochs = 10
 

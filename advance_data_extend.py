@@ -21,14 +21,18 @@ file_type = '.JPEG'
 target_directory = './data/imagenet/img/'
 result_directory = './data/imagenet/none/'
 result_tf_file = 'imagenet_train'
-verbose = True
+verbose = False
+image_count = 0
 class_count = 0
+split_count = 0
 walk_generator = os.walk(target_directory)
 root, dir, _ = next(walk_generator)
 class_num = len(dir)
+# Generate tfrecord writer
+writer = tf.io.TFRecordWriter(result_directory + result_tf_file + '.tfrecord-' + str(split_count).zfill(5))
 for d in dir:
     # Generate tfrecord writer
-    writer = tf.io.TFRecordWriter(result_directory + result_tf_file + '.tfrecord-' + str(class_count).zfill(5) + '-of-' + str(class_num).zfill(5))
+    # writer = tf.io.TFRecordWriter(result_directory + result_tf_file + '.tfrecord-' + str(class_count).zfill(5) + '-of-' + str(class_num).zfill(5))
     print(d, class_count)
     walk_generator2 = os.walk(root + d)
     flies_root, _, files = next(walk_generator2)
@@ -148,12 +152,17 @@ for d in dir:
                 example = tf.train.Example(features=features)
                 serialized = example.SerializeToString()
                 writer.write(serialized)
-
+                image_count = image_count + 1
+                if image_count % 200 == 0:
+                    writer.close()
+                    split_count = split_count + 1
+                    writer = tf.io.TFRecordWriter(
+                        result_directory + result_tf_file + '.tfrecord-' + str(split_count).zfill(5))
                 if verbose:
                     print("Writing {} done!".format(result_tf_file))
-    writer.close()
+    # writer.close()
     class_count = class_count + 1
-        # image = cv2.imread(os.path.join(r, file))
+    # image = cv2.imread(os.path.join(r, file))
     #     # cv2.imshow("image", image)
     #     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     #     blurred = cv2.GaussianBlur(gray, (15, 15), 0)
