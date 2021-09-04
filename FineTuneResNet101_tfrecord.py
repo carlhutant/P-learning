@@ -139,6 +139,7 @@ train_dataset = train_dataset.batch(batch_size)
 val_dataset = val_dataset.batch(batch_size)
 train_dataset = train_dataset.repeat(15)
 val_dataset = val_dataset.repeat(15)
+val_dataset.shuffle()
 # feature, label = next(iter(val_dataset.batch(8)))
 # a = 0
 
