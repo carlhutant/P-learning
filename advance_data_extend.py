@@ -2,6 +2,7 @@ import os
 import tensorflow as tf
 import numpy as np
 import cv2
+import random
 from scipy import signal
 
 
@@ -18,7 +19,7 @@ def _dtype_feature(ndarray):
 
 
 file_type = '.JPEG'
-target_directory = './data/imagenet/img/'
+target_directory = './data/AWA2/IMG/train/'
 result_directory = './data/imagenet/none/'
 result_tf_file = 'imagenet_train'
 verbose = False
@@ -45,8 +46,11 @@ for d in dir:
     class_count = class_count + 1
 
 writer = tf.io.TFRecordWriter(result_directory + result_tf_file + '.tfrecord-' + str(split_count).zfill(5))
-while len(file_path_list) != 0:
-    image = cv2.imread(os.path.join(flies_root, file))
+random.seed(486)
+while len(file_path_list) > 0:
+    rand_index = random.randrange(0, len(file_path_list), 1)
+    image = cv2.imread(file_path_list[rand_index])
+    del file_path_list[rand_index]
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_AREA)
     # cv2.imshow("image", image)
@@ -158,15 +162,14 @@ while len(file_path_list) != 0:
     features = tf.train.Features(feature=d_feature)
     example = tf.train.Example(features=features)
     serialized = example.SerializeToString()
-    writer.write(serialized)
+    # writer.write(serialized)
     image_count = image_count + 1
     if image_count % 200 == 0:
         writer.close()
         split_count = split_count + 1
         writer = tf.io.TFRecordWriter(
             result_directory + result_tf_file + '.tfrecord-' + str(split_count).zfill(5))
-    if verbose:
-        print("Writing {} done!".format(result_tf_file))
+writer.close()
     # image = cv2.imread(os.path.join(r, file))
     #     # cv2.imshow("image", image)
     #     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
