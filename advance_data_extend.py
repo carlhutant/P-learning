@@ -49,7 +49,7 @@ writer = tf.io.TFRecordWriter(result_directory + result_tf_file + '.tfrecord-' +
 random.seed(486)
 while len(file_path_list) > 0:
     rand_index = random.randrange(0, len(file_path_list), 1)
-    image = cv2.imread(file_path_list[rand_index])
+    image = cv2.imread(file_path_list[rand_index][0])
     del file_path_list[rand_index]
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_AREA)
@@ -151,7 +151,7 @@ while len(file_path_list) > 0:
     np_feature = image.reshape(-1)
     np_feature = np.array(np_feature, dtype=np.float32)
     np_label = np.zeros(class_num, dtype=np.int64)
-    np_label[class_count] = 1
+    np_label[file_path_list[rand_index][1]] = 1
 
     dtype_feature_x = _dtype_feature(np_feature)
     dtype_feature_y = _dtype_feature(np_label)
