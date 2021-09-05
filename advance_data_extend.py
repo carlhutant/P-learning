@@ -19,8 +19,8 @@ def _dtype_feature(ndarray):
 
 
 file_type = '.JPEG'
-target_directory = './data/AWA2/IMG/train/'
-result_directory = './data/imagenet/none/'
+target_directory = 'E:/Dataset/Imagenet/ILSVRC2012_img_train/img/'
+result_directory = 'E:/Dataset/Imagenet/ILSVRC2012_img_train/tfrecord/color_diff_121/'
 result_tf_file = 'imagenet_train'
 verbose = False
 image_count = 0
@@ -89,65 +89,25 @@ while len(file_path_list) > 0:
     # cv2.imwrite(origin_file_name[0] + origin_file_name[1], canny)
     # # cv2.imwrite(origin_file_name[0] + '_edge_negative_extend' + origin_file_name[1], result)
 
-    # # custom edge
-    # # filter id 121
-    # horizontal_filter = np.array([[1, 0, -1],
-    #                               [2, 0, -2],
-    #                               [1, 0, -1]], dtype="int")
-    # vertical_filter = np.array([[1, 2, 1],
-    #                             [0, 0, 0],
-    #                             [-1, -2, -1]], dtype="int")
-    # result = np.empty(shape=image.shape[:-1]+(0,))
-    # for i in range(3):
-    #     horizontal_result = signal.convolve2d(image[..., i], horizontal_filter, boundary='symm',
-    #                                           mode='same')
-    #     vertical_result = signal.convolve2d(image[..., i], horizontal_filter, boundary='symm',
-    #                                         mode='same')
-    #     result = np.concatenate(
-    #         (result, horizontal_result[..., np.newaxis], vertical_result[..., np.newaxis]), axis=-1)
-    # feature = result.reshape(1, -1)
-    # label = np.array([[class_count]], dtype=np.int64)
-    # origin_file_name = os.path.splitext(os.path.join(rr, file))
-    #
-    # assert isinstance(feature, np.ndarray)
-    # assert len(feature.shape) == 2  # If X has a higher rank,
-    # # it should be rshape before fed to this function.
-    # assert isinstance(label, np.ndarray) or label is None
-    # # load appropriate tf.train.Feature class depending on dtype
-    # dtype_feature_x = _dtype_feature(feature)
-    # if label is not None:
-    #     assert feature.shape[0] == label.shape[0]
-    #     assert len(label.shape) == 2
-    #     dtype_feature_y = _dtype_feature(label)
-    #
-    # if verbose:
-    #     print("Serializing {:d} examples into {}".format(feature.shape[0], result_tf_file))
-    #
-    # # iterate over each sample,
-    # # and serialize it as ProtoBuf.
-    # for idx in range(feature.shape[0]):
-    #     x = feature[idx]
-    #     if label is not None:
-    #         y = label[idx]
-    #
-    #     d_feature = {'X': dtype_feature_x(x)}
-    #     if label is not None:
-    #         d_feature['Y'] = dtype_feature_y(y)
-    #
-    #     features = tf.train.Features(feature=d_feature)
-    #     example = tf.train.Example(features=features)
-    #     serialized = example.SerializeToString()
-    #     writer.write(serialized)
-    #
-    # if verbose:
-    #     print("Writing {} done!".format(result_tf_file))
-    #
-    #
-    # # np.save(origin_file_name[0] + '_color_diff_121.npy', result)
-    # # os.remove(os.path.join(rr, file))
+    # custom edge
+    # filter id 121
+    horizontal_filter = np.array([[1, 0, -1],
+                                  [2, 0, -2],
+                                  [1, 0, -1]], dtype="int")
+    vertical_filter = np.array([[1, 2, 1],
+                                [0, 0, 0],
+                                [-1, -2, -1]], dtype="int")
+    result = np.empty(shape=image.shape[:-1]+(0,))
+    for RGB_index in range(3):
+        horizontal_result = signal.convolve2d(image[..., RGB_index], horizontal_filter, boundary='symm',
+                                              mode='same')
+        vertical_result = signal.convolve2d(image[..., RGB_index], horizontal_filter, boundary='symm',
+                                            mode='same')
+        result = np.concatenate(
+            (result, horizontal_result[..., np.newaxis], vertical_result[..., np.newaxis]), axis=-1)
 
-    # jpg to tfrecord
-    np_feature = image.reshape(-1)
+    # numpy to tfrecord
+    np_feature = result.reshape(-1)
     np_feature = np.array(np_feature, dtype=np.float32)
     np_label = np.zeros(class_num, dtype=np.int64)
     np_label[file_path_list[rand_index][1]] = 1
@@ -161,11 +121,12 @@ while len(file_path_list) > 0:
     features = tf.train.Features(feature=d_feature)
     example = tf.train.Example(features=features)
     serialized = example.SerializeToString()
-    # writer.write(serialized)
+    writer.write(serialized)
     image_count = image_count + 1
     if image_count % 200 == 0:
         writer.close()
         split_count = split_count + 1
+        print(split_count)
         writer = tf.io.TFRecordWriter(
             result_directory + result_tf_file + '.tfrecord-' + str(split_count).zfill(5))
     del file_path_list[rand_index]
