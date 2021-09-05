@@ -50,7 +50,6 @@ random.seed(486)
 while len(file_path_list) > 0:
     rand_index = random.randrange(0, len(file_path_list), 1)
     image = cv2.imread(file_path_list[rand_index][0])
-    del file_path_list[rand_index]
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_AREA)
     # cv2.imshow("image", image)
@@ -169,6 +168,7 @@ while len(file_path_list) > 0:
         split_count = split_count + 1
         writer = tf.io.TFRecordWriter(
             result_directory + result_tf_file + '.tfrecord-' + str(split_count).zfill(5))
+    del file_path_list[rand_index]
 writer.close()
     # image = cv2.imread(os.path.join(r, file))
     #     # cv2.imshow("image", image)
