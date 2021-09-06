@@ -1,7 +1,7 @@
 import os
 import tarfile
 
-directory_path = 'E:/Dataset/imagenet/ILSVRC2012_img_train/'
+directory_path = 'E:/Dataset/imagenet/ILSVRC2012_img_train_t3/'
 walk_generator = os.walk(directory_path)
 files = next(walk_generator)[2]
 count = 0
