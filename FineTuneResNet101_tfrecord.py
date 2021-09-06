@@ -1,5 +1,4 @@
 import warnings
-
 warnings.filterwarnings('ignore')
 
 import numpy as np
@@ -22,15 +21,15 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 # Import data
 # change the dataset here###
 dataset = 'imagenet'
-# color_diff_121, none
+# datatype: img, tfrecord
+datatype = 'tfrecord'
+# data preprocess: color_diff_121, none
 preprocess = 'none'
 ##############################
 
 batch_size = 16
-directory = './data/{}/{}/'.format(dataset, preprocess)
+dataset_directory = './data/{}/{}/{}/'.format(dataset, datatype, preprocess)
 IMG_SHAPE = 224
-
-epochs = 15
 
 if dataset == 'SUN':
     class_attr_shape = (102,)
@@ -121,12 +120,12 @@ def tf_parse2(raw_example):
     return feature, label
 
 
-train_files_list = tf.data.Dataset.list_files(directory + dataset + '_train.tfrecord*')
-val_files_list = tf.data.Dataset.list_files(directory + dataset + '_val.tfrecord*')
+train_files_list = tf.data.Dataset.list_files(dataset_directory + dataset + '_train.tfrecord*')
+# val_files_list = tf.data.Dataset.list_files(dataset_directory + dataset + '_val.tfrecord*')
 # for f in train_files_list.take(5):
 #     print(f.numpy())
 train_dataset = tf.data.TFRecordDataset(train_files_list)
-val_dataset = tf.data.TFRecordDataset(val_files_list)
+# val_dataset = tf.data.TFRecordDataset(val_files_list)
 # for serialized_example in val_dataset.take(-1):
 #     example = tf.train.Example()
 #     example.ParseFromString(serialized_example.numpy())
@@ -134,12 +133,12 @@ val_dataset = tf.data.TFRecordDataset(val_files_list)
 #     y_1 = np.array(example.features.feature['Y'].int64_list.value)
 #     a = 0
 train_dataset = train_dataset.map(tf_parse2)
-val_dataset = val_dataset.map(tf_parse2)
+# val_dataset = val_dataset.map(tf_parse2)
 train_dataset = train_dataset.batch(batch_size)
-val_dataset = val_dataset.batch(batch_size)
+# val_dataset = val_dataset.batch(batch_size)
 train_dataset = train_dataset.repeat(15)
-val_dataset = val_dataset.repeat(15)
-val_dataset.shuffle()
+# val_dataset = val_dataset.repeat(15)
+# val_dataset.shuffle()
 # feature, label = next(iter(val_dataset.batch(8)))
 # a = 0
 
@@ -176,12 +175,12 @@ STEP_SIZE_TRAIN = train_cardinality // batch_size
 STEP_SIZE_VALID = val_cardinality // batch_size
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-model.fit(train_dataset, epochs=epochs, validation_data=val_dataset,
-          steps_per_epoch=STEP_SIZE_TRAIN, callbacks=[early_stopping])
-# model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[early_stopping])
+epochs = 15
+'''validation_data = val_dataset'''
+model.fit(train_dataset, epochs=epochs, steps_per_epoch=STEP_SIZE_TRAIN, callbacks=[early_stopping])
 
-epochs = 10
-
+# epochs = 10
+#
 # for layer in model.layers[:335]:
 #     layer.trainable = False
 # for layer in model.layers[335:]:
