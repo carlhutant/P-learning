@@ -49,8 +49,6 @@ elif dataset == 'AWA2':
     class_num = 50
     seen_class_num = 40
     unseen_class_num = 10
-    train_cardinality = 58176
-    val_cardinality = 15872
 elif dataset == 'imagenet':
     class_attr_shape = (85,)
     class_attr_dim = 85
@@ -120,8 +118,8 @@ def tf_parse2(raw_example):
     return feature, label
 
 
-train_files_list = tf.data.Dataset.list_files(dataset_directory + dataset + '_train.tfrecord*')
-# val_files_list = tf.data.Dataset.list_files(dataset_directory + dataset + '_val.tfrecord*')
+train_files_list = tf.data.Dataset.list_files(dataset_directory + 'train.tfrecord*')
+# val_files_list = tf.data.Dataset.list_files(dataset_directory + 'val.tfrecord*')
 # for f in train_files_list.take(5):
 #     print(f.numpy())
 train_dataset = tf.data.TFRecordDataset(train_files_list)
@@ -136,12 +134,19 @@ train_dataset = train_dataset.map(tf_parse2)
 # val_dataset = val_dataset.map(tf_parse2)
 train_dataset = train_dataset.batch(batch_size)
 # val_dataset = val_dataset.batch(batch_size)
-train_dataset = train_dataset.repeat(15)
+# train_dataset = train_dataset.repeat(15)
 # val_dataset = val_dataset.repeat(15)
 # val_dataset.shuffle()
 # feature, label = next(iter(val_dataset.batch(8)))
 # a = 0
-
+train_cardinality = 0
+val_cardinality = 0
+for i in train_dataset:
+    train_cardinality = train_cardinality + 1
+# for i in val_dataset:
+#     val_cardinality = val_cardinality + 1
+train_dataset.apply(tf.data.experimental.assert_cardinality(train_cardinality))
+# val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
 ## Fine tune or Retrain ResNet101
 base_model = ResNet101(weights='imagenet', include_top=False)
 
