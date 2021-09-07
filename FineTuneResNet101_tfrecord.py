@@ -16,7 +16,7 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-
+from tensorflow.keras.optimizers import SGD
 
 # Import data
 # change the dataset here###
@@ -27,7 +27,7 @@ datatype = 'tfrecord'
 preprocess = 'color_diff_121'
 ##############################
 
-batch_size = 16
+batch_size = 128
 dataset_directory = 'E:/Dataset/{}/{}/{}/'.format(dataset, datatype, preprocess)
 IMG_SHAPE = 224
 
@@ -53,10 +53,10 @@ elif dataset == 'imagenet':
     class_attr_shape = (85,)
     class_attr_dim = 85
     class_num = 1000
-    seen_class_num = 4
+    seen_class_num = 1000
     unseen_class_num = 10
-    train_cardinality = 400
-    val_cardinality = 400
+    train_cardinality = 1281167
+    val_cardinality = 50000
 elif dataset == 'plant':
     class_attr_shape = (46,)
     class_attr_dim = 46
@@ -110,7 +110,7 @@ def tf_parse2(raw_example):
     example = tf.io.parse_example(
         raw_example[tf.newaxis], {
             'feature': tf.io.FixedLenFeature(shape=(1, IMG_SHAPE*IMG_SHAPE*IMG_channel), dtype=tf.float32),
-            'label': tf.io.FixedLenFeature(shape=seen_class_num, dtype=tf.int64)
+            'label': tf.io.FixedLenFeature(shape=seen_class_num, dtype=tf.float32)
         })
     feature = tf.reshape(example['feature'][0], [IMG_SHAPE, IMG_SHAPE, IMG_channel])
     # feature = preprocess_input(feature)
@@ -130,6 +130,10 @@ train_dataset = tf.data.TFRecordDataset(train_files_list)
 #     x_1 = np.array(example.features.feature['feature'].float_list.value)
 #     y_1 = np.array(example.features.feature['label'].int64_list.value)
 #     a = 0
+
+train_dataset.apply(tf.data.experimental.assert_cardinality(train_cardinality))
+# val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
+
 train_dataset = train_dataset.map(tf_parse2)
 # val_dataset = val_dataset.map(tf_parse2)
 train_dataset = train_dataset.batch(batch_size)
@@ -137,17 +141,9 @@ train_dataset = train_dataset.batch(batch_size)
 # train_dataset = train_dataset.repeat(15)
 # val_dataset = val_dataset.repeat(15)
 # val_dataset.shuffle()
-# feature, label = next(iter(val_dataset.batch(8)))
+# x = train_dataset.take(1)
 # a = 0
-train_cardinality = 0
-val_cardinality = 0
-for i in train_dataset:
-    train_cardinality = train_cardinality + 1
-# for i in val_dataset:
-#     val_cardinality = val_cardinality + 1
-train_dataset.apply(tf.data.experimental.assert_cardinality(train_cardinality))
-# val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
-## Fine tune or Retrain ResNet101
+# # Fine tune or Retrain ResNet101
 base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 6))
 
 # # lock the model
@@ -177,48 +173,41 @@ model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
 STEP_SIZE_TRAIN = train_cardinality // batch_size
-STEP_SIZE_VALID = val_cardinality // batch_size
+# STEP_SIZE_VALID = val_cardinality // batch_size
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 epochs = 15
-'''validation_data = val_dataset'''
+
+print("step 1:")
 model.fit(train_dataset, epochs=epochs, steps_per_epoch=STEP_SIZE_TRAIN, callbacks=[early_stopping])
 
-# epochs = 10
-#
-# for layer in model.layers[:335]:
-#     layer.trainable = False
-# for layer in model.layers[335:]:
-#     layer.trainable = True
-#
-# from keras.optimizers import SGD
-#
-# model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-#
-# early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-#
-# STEP_SIZE_TRAIN = train_data_gen.n // train_data_gen.batch_size
-# STEP_SIZE_VALID = val_data_gen.n // val_data_gen.batch_size
-#
-# model.fit_generator(train_data_gen,
-#                     steps_per_epoch=STEP_SIZE_TRAIN,
-#                     epochs=epochs,
-#                     validation_data=val_data_gen,
-#                     validation_steps=STEP_SIZE_VALID,
-#                     #                     class_weight=class_weights,
-#                     callbacks=[early_stopping]
-#                     )
-#
-# new_model = Model(model.inputs, model.layers[-3].output)
-#
+new_model = Model(model.inputs, model.layers[-1].output)
 # new_model.summary()
-#
-# new_model.save('./model/{}/FineTuneResNet101.h5'.format(dataset))
-#
-# # ## Evaluate
+new_model.save('./model/{}/ImagenetResNet101_step1.h5'.format(dataset))
+
+for layer in model.layers[:335]:
+    layer.trainable = False
+for layer in model.layers[335:]:
+    layer.trainable = True
+
+model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
+
+STEP_SIZE_TRAIN = train_cardinality // batch_size
+# STEP_SIZE_VALID = val_cardinality // batch_size
+
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
+epochs = 10
+print("step 2:")
+model.fit(train_dataset, epochs=epochs, steps_per_epoch=STEP_SIZE_TRAIN, callbacks=[early_stopping])
+
+new_model = Model(model.inputs, model.layers[-1].output)
+# new_model.summary()
+new_model.save('./model/{}/ImagenetResNet101_step2.h5'.format(dataset))
+
+# ## Evaluate
 # model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
 #               , loss='categorical_crossentropy', metrics=['accuracy'])
-# # model.load_weights("./model/AWA2/FineTuneResNet101_edge_with_head.h5")
-# # STEP_SIZE_VALID = val_data_gen.n // val_data_gen.batch_size
+# model.load_weights("./model/AWA2/FineTuneResNet101_edge_with_head.h5")
+# STEP_SIZE_VALID = val_data_gen.n // val_data_gen.batch_size
 # score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
 # print(score)
