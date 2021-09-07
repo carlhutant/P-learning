@@ -8,7 +8,6 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import optimizers
 from tensorflow.keras.optimizers import Adam
-from sklearn.model_selection import train_test_split
 from tensorflow.keras.applications.resnet import ResNet101, preprocess_input
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
@@ -18,9 +17,6 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from imblearn.over_sampling import RandomOverSampler
-from imblearn.keras import balanced_batch_generator
-from sklearn.utils import class_weight
 
 # Import data
 # change the dataset here###
@@ -98,7 +94,7 @@ class_weights = class_weight.compute_class_weight(
 
 
 ## Fine tune or Retrain ResNet101
-base_model = ResNet101(weights='imagenet', include_top=False)
+base_model = ResNet101(weights='imagenet', include_top=True)
 
 # # lock the model
 # for layer in base_model.layers:

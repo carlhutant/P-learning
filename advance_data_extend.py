@@ -7,12 +7,12 @@ import threading
 import multiprocessing
 from scipy import signal
 
-thread_max = 32
+thread_max = 48
 split_max = 100
 file_type = '.JPEG'
-target_directory = 'E:/Dataset/Imagenet/ILSVRC2012_img_train/img/'
-result_directory = 'E:/Dataset/Imagenet/ILSVRC2012_img_train/tfrecord/color_diff_121/'
-result_tf_file = 'imagenet_train'
+target_directory = 'E:/Dataset/imagenet/img/val/'
+result_directory = 'E:/Dataset/imagenet/tfrecord/color_diff_121/'
+result_tf_file = 'val'
 verbose = False
 class_num = 1000
 
@@ -23,8 +23,8 @@ def _dtype_feature(ndarray):
     dtype_ = ndarray.dtype
     if dtype_ == np.float64 or dtype_ == np.float32:
         return lambda array: tf.train.Feature(float_list=tf.train.FloatList(value=array))
-    elif dtype_ == np.int64:
-        return lambda array: tf.train.Feature(int64_list=tf.train.Int64List(value=array))
+    elif dtype_ == np.float32:
+        return lambda array: tf.train.Feature(float_list=tf.train.FloatList(value=array))
     else:
         raise ValueError("The input should be numpy ndarray. Instaed got {}".format(ndarray.dtype))
 
@@ -76,7 +76,7 @@ def file_processing(instance_in):
     # custom edge
     # filter id 121
     feature = color_diff_121(image)
-    label = np.zeros(class_num, dtype=np.int64)
+    label = np.zeros(class_num, dtype=np.float32)
     label[instance_in['label']] = 1
     example = np_instance_to_example(feature, label)
     return example

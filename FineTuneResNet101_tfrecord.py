@@ -30,7 +30,8 @@ preprocess = 'color_diff_121'
 batch_size = 128
 dataset_directory = 'E:/Dataset/{}/{}/{}/'.format(dataset, datatype, preprocess)
 IMG_SHAPE = 224
-
+train_cardinality = 0
+val_cardinality = 0
 if dataset == 'SUN':
     class_attr_shape = (102,)
     class_attr_dim = 102
@@ -119,25 +120,27 @@ def tf_parse2(raw_example):
 
 
 train_files_list = tf.data.Dataset.list_files(dataset_directory + 'train.tfrecord*')
-# val_files_list = tf.data.Dataset.list_files(dataset_directory + 'val.tfrecord*')
+val_files_list = tf.data.Dataset.list_files(dataset_directory + 'val.tfrecord*')
 # for f in train_files_list.take(5):
 #     print(f.numpy())
 train_dataset = tf.data.TFRecordDataset(train_files_list)
-# val_dataset = tf.data.TFRecordDataset(val_files_list)
-# for serialized_example in train_dataset.take(-1):
-#     example = tf.train.Example()
-#     example.ParseFromString(serialized_example.numpy())
-#     x_1 = np.array(example.features.feature['feature'].float_list.value)
-#     y_1 = np.array(example.features.feature['label'].int64_list.value)
-#     a = 0
+val_dataset = tf.data.TFRecordDataset(val_files_list)
+# count = 0
+# for serialized_example in val_dataset.take(-1):
+#     # example = tf.train.Example()
+#     # example.ParseFromString(serialized_example.numpy())
+#     # x_1 = np.array(example.features.feature['feature'].float_list.value)
+#     # y_1 = np.array(example.features.feature['label'].int64_list.value)
+#     print(count)
+#     count = count + 1
 
 train_dataset.apply(tf.data.experimental.assert_cardinality(train_cardinality))
-# val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
+val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
 
 train_dataset = train_dataset.map(tf_parse2)
-# val_dataset = val_dataset.map(tf_parse2)
+val_dataset = val_dataset.map(tf_parse2)
 train_dataset = train_dataset.batch(batch_size)
-# val_dataset = val_dataset.batch(batch_size)
+val_dataset = val_dataset.batch(batch_size)
 # train_dataset = train_dataset.repeat(15)
 # val_dataset = val_dataset.repeat(15)
 # val_dataset.shuffle()
@@ -155,7 +158,7 @@ x = base_model.output
 x = GlobalAveragePooling2D()(x)
 
 # add a dense
-x = Dense(1024, activation='relu')(x)
+# x = Dense(2048, activation='relu')(x)
 
 # add a classifier
 predictions = Dense(seen_class_num, activation='softmax')(x)
@@ -166,24 +169,23 @@ model = Model(inputs=base_model.input, outputs=predictions)
 # compile
 # model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
 #               , loss='categorical_crossentropy',metrics=['accuracy'])
-# keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
+# keras.utils.plot_model(model, to_file='model2.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                            rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
 STEP_SIZE_TRAIN = train_cardinality // batch_size
-# STEP_SIZE_VALID = val_cardinality // batch_size
+STEP_SIZE_VALID = val_cardinality // batch_size
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
+model.save('./model/{}/ImagenetResNet101_step0_epoch{}.h5'.format(dataset, 0))
 epochs = 15
-
-print("step 1:")
-model.fit(train_dataset, epochs=epochs, steps_per_epoch=STEP_SIZE_TRAIN, callbacks=[early_stopping])
-
-new_model = Model(model.inputs, model.layers[-1].output)
-# new_model.summary()
-new_model.save('./model/{}/ImagenetResNet101_step1.h5'.format(dataset))
+for i in range(epochs):
+    print("step 1 epoch {}:".format(i+1))
+    model.fit(train_dataset, epochs=1, steps_per_epoch=STEP_SIZE_TRAIN, validation_data=val_dataset,
+              validation_steps=STEP_SIZE_VALID, callbacks=[early_stopping])
+    model.save('./model/{}/ImagenetResNet101_step1_epoch{}.h5'.format(dataset, i))
 
 for layer in model.layers[:335]:
     layer.trainable = False
@@ -193,16 +195,16 @@ for layer in model.layers[335:]:
 model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
 
 STEP_SIZE_TRAIN = train_cardinality // batch_size
-# STEP_SIZE_VALID = val_cardinality // batch_size
+STEP_SIZE_VALID = val_cardinality // batch_size
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 epochs = 10
 print("step 2:")
-model.fit(train_dataset, epochs=epochs, steps_per_epoch=STEP_SIZE_TRAIN, callbacks=[early_stopping])
-
-new_model = Model(model.inputs, model.layers[-1].output)
-# new_model.summary()
-new_model.save('./model/{}/ImagenetResNet101_step2.h5'.format(dataset))
+for i in range(epochs):
+    print("step 2 epoch {}:".format(i+1))
+    model.fit(train_dataset, epochs=1, steps_per_epoch=STEP_SIZE_TRAIN, validation_data=val_dataset,
+              validation_steps=STEP_SIZE_VALID, callbacks=[early_stopping])
+    model.save('./model/{}/ImagenetResNet101_step2_epoch{}.h5'.format(dataset, i))
 
 # ## Evaluate
 # model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
