@@ -24,11 +24,11 @@ dataset = 'imagenet'
 # datatype: img, tfrecord
 datatype = 'tfrecord'
 # data preprocess: color_diff_121, none
-preprocess = 'none'
+preprocess = 'color_diff_121'
 ##############################
 
 batch_size = 16
-dataset_directory = './data/{}/{}/{}/'.format(dataset, datatype, preprocess)
+dataset_directory = 'E:/Dataset/{}/{}/{}/'.format(dataset, datatype, preprocess)
 IMG_SHAPE = 224
 
 if dataset == 'SUN':
@@ -113,7 +113,7 @@ def tf_parse2(raw_example):
             'label': tf.io.FixedLenFeature(shape=seen_class_num, dtype=tf.int64)
         })
     feature = tf.reshape(example['feature'][0], [IMG_SHAPE, IMG_SHAPE, IMG_channel])
-    feature = preprocess_input(feature)
+    # feature = preprocess_input(feature)
     label = example['label'][0]
     return feature, label
 
@@ -124,11 +124,11 @@ train_files_list = tf.data.Dataset.list_files(dataset_directory + 'train.tfrecor
 #     print(f.numpy())
 train_dataset = tf.data.TFRecordDataset(train_files_list)
 # val_dataset = tf.data.TFRecordDataset(val_files_list)
-# for serialized_example in val_dataset.take(-1):
+# for serialized_example in train_dataset.take(-1):
 #     example = tf.train.Example()
 #     example.ParseFromString(serialized_example.numpy())
-#     x_1 = np.array(example.features.feature['X'].float_list.value)
-#     y_1 = np.array(example.features.feature['Y'].int64_list.value)
+#     x_1 = np.array(example.features.feature['feature'].float_list.value)
+#     y_1 = np.array(example.features.feature['label'].int64_list.value)
 #     a = 0
 train_dataset = train_dataset.map(tf_parse2)
 # val_dataset = val_dataset.map(tf_parse2)
@@ -148,7 +148,7 @@ for i in train_dataset:
 train_dataset.apply(tf.data.experimental.assert_cardinality(train_cardinality))
 # val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
 ## Fine tune or Retrain ResNet101
-base_model = ResNet101(weights='imagenet', include_top=False)
+base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 6))
 
 # # lock the model
 # for layer in base_model.layers:
