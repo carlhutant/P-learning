@@ -17,24 +17,20 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.optimizers import SGD
 
 # Import data
 # change the dataset here###
-dataset = 'AWA2'
+dataset = 'imagenet'
+# datatype: img, tfrecord
+datatype = 'img'
+# data preprocess: color_diff_121, none
+preprocess = 'none'
 ##############################
 
 batch_size = 16
-# train_dir = './data/{}/IMG/train'.format(dataset)
-train_dir = './data/{}/test_draw'.format(dataset)
-
-# extend: [1.0499614477157593, 0.8599420189857483] edge: [0.7108655571937561, 0.8704637289047241]   # 訓練環境
-# val_dir = './data/{}/IMG/val'.format(dataset) # 辨識資料
-
-# extend: [18.021373748779297, 0.07749495655298233] edge: [13.31424617767334, 0.03162802383303642]   # 訓練環境
-val_dir = './data/{}/IMG/new_val_b_y'.format(dataset)   # 辨識資料
-
-# extend: [3.345625877380371, 0.5540574789047241] edge: [2.9107425212860107, 0.5270287394523621]   # 訓練環境
-# val_dir = './data/{}/IMG/val_edge'.format(dataset)    # 辨識資料
+train_dir = 'E:/Dataset/{}/{}/train/'.format(dataset, datatype)
+val_dir = 'E:/Dataset/{}/{}/val/'.format(dataset, datatype)
 IMG_SHAPE = 224
 
 epochs = 15
@@ -63,6 +59,12 @@ elif dataset == 'plant':
     class_num = 38
     seen_class_num = 25
     unseen_class_num = 13
+elif dataset == 'imagenet':
+    class_attr_shape = (0,)
+    class_attr_dim = 0
+    class_num = 1000
+    seen_class_num = 1000
+    unseen_class_num = 0
 
 image_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
 # image_gen = ImageDataGenerator()
@@ -94,7 +96,7 @@ class_weights = class_weight.compute_class_weight(
 
 
 ## Fine tune or Retrain ResNet101
-base_model = ResNet101(weights='imagenet', include_top=True)
+base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 3))
 
 # # lock the model
 # for layer in base_model.layers:
@@ -136,7 +138,7 @@ model.fit_generator(train_data_gen,
                     #                     class_weight=class_weights,
                     callbacks=[early_stopping]
                     )
-
+model.save('./model/{}/{}_{}/ImagenetResNet101_step1.h5'.format(dataset, preprocess, datatype))
 epochs = 10
 
 for layer in model.layers[:335]:
@@ -144,7 +146,6 @@ for layer in model.layers[:335]:
 for layer in model.layers[335:]:
     layer.trainable = True
 
-from keras.optimizers import SGD
 
 model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
 
@@ -162,16 +163,12 @@ model.fit_generator(train_data_gen,
                     callbacks=[early_stopping]
                     )
 
-new_model = Model(model.inputs, model.layers[-3].output)
+model.save('./model/{}/{}_{}/ImagenetResNet101_step2.h5'.format(dataset, preprocess, datatype))
 
-new_model.summary()
-
-new_model.save('./model/{}/FineTuneResNet101.h5'.format(dataset))
-
-# ## Evaluate
-model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-# model.load_weights("./model/AWA2/FineTuneResNet101_edge_with_head.h5")
-# STEP_SIZE_VALID = val_data_gen.n // val_data_gen.batch_size
-score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
-print(score)
+# # Evaluate
+# model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+#               , loss='categorical_crossentropy', metrics=['accuracy'])
+# # model.load_weights("./model/AWA2/FineTuneResNet101_edge_with_head.h5")
+# # STEP_SIZE_VALID = val_data_gen.n // val_data_gen.batch_size
+# score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
+# print(score)
