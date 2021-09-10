@@ -28,7 +28,7 @@ datatype = 'img'
 preprocess = 'none'
 ##############################
 
-batch_size = 16
+batch_size = 128
 train_dir = 'E:/Dataset/{}/{}/train/'.format(dataset, datatype)
 val_dir = 'E:/Dataset/{}/{}/val/'.format(dataset, datatype)
 IMG_SHAPE = 224
@@ -66,7 +66,8 @@ elif dataset == 'imagenet':
     seen_class_num = 1000
     unseen_class_num = 0
 
-image_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
+# image_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
+image_gen = ImageDataGenerator()
 # image_gen = ImageDataGenerator()
 train_data_gen = image_gen.flow_from_directory(
     batch_size=batch_size,
@@ -78,8 +79,8 @@ train_data_gen = image_gen.flow_from_directory(
     seed=42
 )
 
-image_gen_val = ImageDataGenerator(preprocessing_function=preprocess_input)
-
+# image_gen_val = ImageDataGenerator(preprocessing_function=preprocess_input)
+image_gen_val = ImageDataGenerator()
 val_data_gen = image_gen_val.flow_from_directory(
     batch_size=batch_size,
     directory=val_dir,
@@ -89,10 +90,10 @@ val_data_gen = image_gen_val.flow_from_directory(
     seed=42
 )
 
-class_weights = class_weight.compute_class_weight(
-           'balanced',
-            np.unique(train_data_gen.classes),
-            train_data_gen.classes)
+# class_weights = class_weight.compute_class_weight(
+#            'balanced',
+#             np.unique(train_data_gen.classes),
+#             train_data_gen.classes)
 
 
 ## Fine tune or Retrain ResNet101
@@ -107,7 +108,7 @@ x = base_model.output
 x = GlobalAveragePooling2D()(x)
 
 # add a dense
-x = Dense(1024, activation='relu')(x)
+# x = Dense(1024, activation='relu')(x)
 
 # add a classifier
 predictions = Dense(seen_class_num, activation='softmax')(x)
@@ -129,6 +130,8 @@ early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 
 STEP_SIZE_TRAIN = train_data_gen.n // train_data_gen.batch_size
 STEP_SIZE_VALID = val_data_gen.n // val_data_gen.batch_size
+
+model.save('./model/{}/{}_{}/ImagenetResNet101_step0.h5'.format(dataset, preprocess, datatype))
 
 model.fit_generator(train_data_gen,
                     steps_per_epoch=STEP_SIZE_TRAIN,
