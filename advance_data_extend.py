@@ -10,9 +10,9 @@ from scipy import signal
 thread_max = 48
 split_max = 100
 file_type = '.JPEG'
-target_directory = 'E:/Dataset/imagenet/img/val/'
-result_directory = 'E:/Dataset/imagenet/tfrecord/color_diff_121/'
-result_tf_file = 'val'
+target_directory = 'E:/Dataset/imagenet/img/train/'
+result_directory = 'E:/Dataset/imagenet/tfrecord/none/'
+result_tf_file = 'train'
 verbose = False
 class_num = 1000
 
@@ -73,9 +73,11 @@ def file_processing(instance_in):
     image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_AREA)
     # cv2.imshow("image", image)
 
-    # custom edge
-    # filter id 121
-    feature = color_diff_121(image)
+    # # custom edge
+    # # filter id 121
+    # feature = color_diff_121(image)
+    feature = image
+
     label = np.zeros(class_num, dtype=np.float32)
     label[instance_in['label']] = 1
     example = np_instance_to_example(feature, label)
