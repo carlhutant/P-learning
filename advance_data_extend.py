@@ -7,7 +7,7 @@ import threading
 import multiprocessing
 from scipy import signal
 
-thread_max = 1
+thread_max = 4
 split_max = 100
 target_file_type = '.JPEG'
 target_directory = 'D:/Program/Python/P_learning/data/AWA2/test_draw/'
@@ -92,7 +92,7 @@ def feature_processing(image):
 
 
 def thread_func(id, instance_list):
-    if save_file_type == '.tfrecord':
+    if save_file_type == 'tfrecord':
         split_count = 0
         image_count = 0
         writer = tf.io.TFRecordWriter(result_directory + result_tf_file + '.tfrecord-' + str(split_count*thread_max+id).zfill(5))
@@ -140,10 +140,14 @@ def no_thread_func(instance_list):
 if __name__ == "__main__":
     class_count = 0
     walk_generator = os.walk(target_directory)
+    walk_generator2 = os.walk('D:/Program/Python/P_learning/data/AWA2/test_draw/')  #
     root, directory, _ = next(walk_generator)
+    _, directory2, _ = next(walk_generator2)
     class_num = len(directory)
     instance_list = []
-
+    for i in range(len(directory)):
+        if directory[i] != directory2[i]:
+            a = 0
     for d in directory:
         print(d, class_count)
         walk_generator2 = os.walk(root + d)
