@@ -10,9 +10,9 @@ from scipy import signal
 thread_max = 48
 split_max = 100
 file_type = '.JPEG'
-target_directory = 'E:/Dataset/imagenet/img/train/'
+target_directory = 'E:/Dataset/imagenet/img/val/'
 result_directory = 'E:/Dataset/imagenet/tfrecord/none/'
-result_tf_file = 'train'
+result_tf_file = 'val'
 verbose = False
 class_num = 1000
 

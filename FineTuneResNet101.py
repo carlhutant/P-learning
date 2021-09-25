@@ -94,8 +94,6 @@ val_data_gen = image_gen_val.flow_from_directory(
 #            'balanced',
 #             np.unique(train_data_gen.classes),
 #             train_data_gen.classes)
-
-
 ## Fine tune or Retrain ResNet101
 base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 3))
 
