@@ -10,11 +10,14 @@ from scipy import signal
 thread_max = 48
 split_max = 100
 file_type = '.JPEG'
-target_directory = 'E:/Dataset/imagenet/img/val/'
+target_directory = 'E:/Dataset/imagenet/img/train/'
 result_directory = 'E:/Dataset/imagenet/tfrecord/none/'
-result_tf_file = 'val'
+result_tf_file = 'train'
 verbose = False
 class_num = 1000
+# save_file_type: origin, tfrecord
+save_file_type = 'origin'
+process_type = 'rgb_sw_021'
 
 
 def _dtype_feature(ndarray):
@@ -67,40 +70,54 @@ def np_instance_to_example(np_feature, np_label):
     return serialized
 
 
-def file_processing(instance_in):
+def file_load(instance_in):
     image = cv2.imread(instance_in['path'])
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_AREA)
     # cv2.imshow("image", image)
 
+    label = np.zeros(class_num, dtype=np.float32)
+    label[instance_in['label']] = 1
+
+    return image, label
+
+
+def feature_processing(image):
     # # custom edge
     # # filter id 121
     # feature = color_diff_121(image)
-    feature = image
+    feature = image[..., [0, 2, 1]]
 
-    label = np.zeros(class_num, dtype=np.float32)
-    label[instance_in['label']] = 1
-    example = np_instance_to_example(feature, label)
-    return example
+    return feature
 
 
 def thread_func(id, instance_list):
-    split_count = 0
-    image_count = 0
-    writer = tf.io.TFRecordWriter(result_directory + result_tf_file + '.tfrecord-' + str(split_count*thread_max+id).zfill(5))
-    for instance in instance_list:
-        serialized_example = file_processing(instance)
-        writer.write(serialized_example)
-        image_count = image_count + 1
-        if id == 0:
-            print(str(image_count)+'/'+str(len(instance_list)))
-        if image_count % split_max == 0:
-            writer.close()
-            split_count = split_count + 1
-            # print(split_count)
-            writer = tf.io.TFRecordWriter(
-                result_directory + result_tf_file + '.tfrecord-' + str(split_count*thread_max+id).zfill(5))
-    writer.close()
+    if save_file_type == 'tfrecord':
+        split_count = 0
+        image_count = 0
+        writer = tf.io.TFRecordWriter(result_directory + result_tf_file + '.tfrecord-' + str(split_count*thread_max+id).zfill(5))
+        for instance in instance_list:
+            image, label = file_load(instance)
+            feature = feature_processing(image)
+            serialized_example = np_instance_to_example(feature, label)
+            writer.write(serialized_example)
+            image_count = image_count + 1
+            if id == 0:
+                print(str(image_count)+'/'+str(len(instance_list)))
+            if image_count % split_max == 0:
+                writer.close()
+                split_count = split_count + 1
+                # print(split_count)
+                writer = tf.io.TFRecordWriter(
+                    result_directory + result_tf_file + '.tfrecord-' + str(split_count*thread_max+id).zfill(5))
+        writer.close()
+    elif save_file_type == 'origin':
+        for instance in instance_list:
+            image, _ = file_load(instance)
+            feature = feature_processing(image)
+            split_file_name = os.path.splitext(instance['path'])
+            save_file_name = split_file_name[0] + '_' + process_type + split_file_name[1]
+            cv2.imwrite(save_file_name, feature)
 
 
 def no_thread_func(instance_list):
@@ -123,16 +140,20 @@ def no_thread_func(instance_list):
 if __name__ == "__main__":
     class_count = 0
     walk_generator = os.walk(target_directory)
+    walk_generator2 = os.walk('D:/Program/Python/P_learning/data/AWA2/test_draw/')  #
     root, directory, _ = next(walk_generator)
+    _, directory2, _ = next(walk_generator2)
     class_num = len(directory)
     instance_list = []
-
+    for i in range(len(directory)):
+        if directory[i] != directory2[i]:
+            a = 0
     for d in directory:
         print(d, class_count)
         walk_generator2 = os.walk(root + d)
         flies_root, _, files = next(walk_generator2)
         for file in files:
-            if file.endswith(file_type):
+            if file.endswith(target_file_type):
                 if not os.path.splitext(file)[0].endswith("_extend"):
                     instance_list.append({'path': os.path.join(flies_root, file), 'label': class_count})
         class_count = class_count + 1
