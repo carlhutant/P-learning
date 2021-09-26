@@ -66,6 +66,16 @@ elif dataset == 'imagenet':
     seen_class_num = 1000
     unseen_class_num = 0
 
+
+def crop_generator(batches, new_size):
+    while True:
+        batch_x, batch_y = next(batches)
+        x = batch_x.shape[1] // 2
+        y = batch_x.shape[2] // 2
+        size = new_size // 2
+        yield batch_x[:, x - size:x + size, y - size:y + size], batch_y
+
+
 # image_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
 image_gen = ImageDataGenerator()
 # image_gen = ImageDataGenerator()
@@ -89,6 +99,7 @@ val_data_gen = image_gen_val.flow_from_directory(
     color_mode="rgb",
     seed=42
 )
+
 
 # class_weights = class_weight.compute_class_weight(
 #            'balanced',
