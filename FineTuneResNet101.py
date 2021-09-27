@@ -26,13 +26,15 @@ from tensorflow.keras.optimizers import SGD
 dataset = 'AWA2'
 # datatype: img, tfrecord
 datatype = 'img'
-# data preprocess: color_diff_121, none
-preprocess = 'none'
+# data data_advance: color_diff_121, none
+data_advance = 'none'
+# preprocess
+preprocess = 'caffe'
 ##############################
 
-batch_size = 128
-train_dir = 'G:/Dataset/{}/{}/{}/train/'.format(dataset, datatype, preprocess)
-val_dir = 'G:/Dataset/{}/{}/{}/val/'.format(dataset, datatype, preprocess)
+batch_size = 16
+train_dir = './data/{}/{}/train/'.format(dataset, datatype)
+val_dir = './data/{}/{}/val/'.format(dataset, datatype)
 IMG_SHAPE = 224
 
 epochs = 20
@@ -56,6 +58,8 @@ elif dataset == 'AWA2':
     seen_class_num = 40
     unseen_class_num = 10
     file_type = '.jpg'
+    train_cardinality = 24265
+    val_cardinality = 6070
 elif dataset == 'plant':
     class_attr_shape = (46,)
     class_attr_dim = 46
@@ -96,6 +100,7 @@ def img_generator(target_directory, color_mode, shuffle=False):
     while True:
         for instance in instance_list:
             img = cv2.imread(instance['path'])
+
             if color_mode == "RGB":
                 img = img[..., ::-1]
             img = np.array(img, dtype=np.float32)
@@ -114,19 +119,35 @@ def crop_generator(target_directory, batch_size=1, crop_type=None, crop_w=256, c
         batch_label = np.empty([0, seen_class_num], dtype=np.float32)
         for i in range(batch_size):
             img, label = next(img_gen)
+            if horizontal_flip:
+                if random.randint(0, 1):
+                    img = img[:, ::-1, :]
             height, width, _ = img.shape
-            new_height = random.randint(resize_short_edge_min, resize_short_edge_max+1)
-            new_width = round(width*new_height/height)
+            if height < width:
+                new_height = random.randint(resize_short_edge_min, resize_short_edge_max)
+                new_width = round(width*new_height/height)
+            else:
+                new_width = random.randint(resize_short_edge_min, resize_short_edge_max)
+                new_height = round(height * new_width / width)
             img = cv2.resize(img, (new_width, new_height))
-            if crop_type == "random":   # 先不處理 crop 過大的情況
-                y0 = random.randint(0, new_height - crop_h + 1)
-                x0 = random.randint(0, new_width - crop_w + 1)
+            if crop_type == None:
+                crop = cv2.resize(img, (crop_w, crop_h))
+            elif crop_type == "random":   # 先不處理 crop 過大的情況
+                y0 = random.randint(0, new_height - crop_h)
+                x0 = random.randint(0, new_width - crop_w)
                 y1 = y0 + crop_h
                 x1 = x0 + crop_w
-                img = img[y0:y1, x0:x1, :]
-            img = img[np.newaxis, ...]
+                crop = img[y0:y1, x0:x1, :]
+            else:
+                crop = cv2.resize(img, (crop_w, crop_h))    # center crop 尚未完成
+            if preprocess == "caffe":
+                if color_mode == 'BGR':
+                    crop = crop - np.array([[[103.939, 116.779, 123.68]]], dtype=np.float32)
+                elif color_mode == 'RGB':
+                    crop = crop - np.array([123.68, 116.779, 103.939], dtype=np.float32)
+            crop = crop[np.newaxis, ...]
             label = label[np.newaxis, ...]
-            batch_feature = np.concatenate((batch_feature, img), 0)
+            batch_feature = np.concatenate((batch_feature, crop), 0)
             batch_label = np.concatenate((batch_label, label), 0)
 
         # x = batch_x.shape[1] // 2
@@ -136,33 +157,56 @@ def crop_generator(target_directory, batch_size=1, crop_type=None, crop_w=256, c
         yield batch_feature, batch_label
 
 
-img_gen = crop_generator(train_dir, batch_size=4, crop_type="random", crop_w=224, crop_h=224, resize_short_edge_max=480,
-                         resize_short_edge_min=256,  shuffle=False, color_mode="BGR", seed=486)
-a = next(img_gen)
-image_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
-# image_gen = ImageDataGenerator()
-# image_gen = ImageDataGenerator()
-train_data_gen = image_gen.flow_from_directory(
+train_data_gen = crop_generator(
+    train_dir,
     batch_size=batch_size,
-    directory=train_dir,
+    crop_type="random",
+    crop_w=IMG_SHAPE,
+    crop_h=IMG_SHAPE,
+    resize_short_edge_max=480,
+    resize_short_edge_min=256,
     shuffle=True,
-    color_mode="rgb",
-    target_size=(IMG_SHAPE, IMG_SHAPE),
-    class_mode='categorical',
-    seed=42
+    color_mode="BGR",
+    seed=486
 )
-test_gen = crop_generator(train_data_gen)
+
+val_data_gen = crop_generator(
+    val_dir,
+    batch_size=batch_size,
+    crop_type="random",
+    crop_w=IMG_SHAPE,
+    crop_h=IMG_SHAPE,
+    resize_short_edge_max=480,
+    resize_short_edge_min=256,
+    shuffle=False,
+    color_mode="BGR",
+    seed=486
+)
+
+# a = next(train_data_gen)
+# image_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
+# image_gen = ImageDataGenerator()
+# image_gen = ImageDataGenerator()
+# train_data_gen = image_gen.flow_from_directory(
+#     batch_size=batch_size,
+#     directory=train_dir,
+#     shuffle=True,
+#     color_mode="rgb",
+#     target_size=(IMG_SHAPE, IMG_SHAPE),
+#     class_mode='categorical',
+#     seed=42
+# )
 
 # image_gen_val = ImageDataGenerator(preprocessing_function=preprocess_input)
 # image_gen_val = ImageDataGenerator()
-val_data_gen = image_gen.flow_from_directory(
-    batch_size=batch_size,
-    directory=val_dir,
-    target_size=(IMG_SHAPE, IMG_SHAPE),
-    class_mode='categorical',
-    color_mode="rgb",
-    seed=42
-)
+# val_data_gen = image_gen.flow_from_directory(
+#     batch_size=batch_size,
+#     directory=val_dir,
+#     target_size=(IMG_SHAPE, IMG_SHAPE),
+#     class_mode='categorical',
+#     color_mode="rgb",
+#     seed=42
+# )
 
 # class_weights = class_weight.compute_class_weight(
 #            'balanced',
@@ -201,12 +245,12 @@ model.compile(optimizer=SGD(lr=0.1, decay=1e-4, momentum=0.9, nesterov=True)
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 
-STEP_SIZE_TRAIN = train_data_gen.n // train_data_gen.batch_size
-STEP_SIZE_VALID = val_data_gen.n // val_data_gen.batch_size
+STEP_SIZE_TRAIN = train_cardinality // batch_size
+STEP_SIZE_VALID = val_cardinality // batch_size
 
-# model.save('./model/{}/{}_{}/ResNet101_step0.h5'.format(dataset, preprocess, datatype))
+model.save('./model/{}/{}_{}/ResNet101_step0.h5'.format(dataset, data_advance, datatype))
 
-model.fit_generator(test_gen,
+model.fit_generator(train_data_gen,
                     steps_per_epoch=STEP_SIZE_TRAIN,
                     epochs=epochs,
                     validation_data=val_data_gen,
@@ -214,7 +258,7 @@ model.fit_generator(test_gen,
                     #                     class_weight=class_weights,
                     callbacks=[early_stopping]
                     )
-model.save('./model/{}/{}_{}/ResNet101_lr01.h5'.format(dataset, preprocess, datatype))
+model.save('./model/{}/{}_{}/ResNet101_lr01.h5'.format(dataset, data_advance, datatype))
 
 epochs = 10
 model.compile(optimizer=SGD(lr=0.01, decay=1e-4, momentum=0.9, nesterov=True)
@@ -227,7 +271,7 @@ model.fit_generator(train_data_gen,
                     #                     class_weight=class_weights,
                     callbacks=[early_stopping]
                     )
-model.save('./model/{}/{}_{}/ResNet101_lr001.h5'.format(dataset, preprocess, datatype))
+model.save('./model/{}/{}_{}/ResNet101_lr001.h5'.format(dataset, data_advance, datatype))
 
 epochs = 10
 model.compile(optimizer=SGD(lr=0.001, decay=1e-4, momentum=0.9, nesterov=True)
@@ -240,7 +284,7 @@ model.fit_generator(train_data_gen,
                     #                     class_weight=class_weights,
                     callbacks=[early_stopping]
                     )
-model.save('./model/{}/{}_{}/ResNet101_lr0001.h5'.format(dataset, preprocess, datatype))
+model.save('./model/{}/{}_{}/ResNet101_lr0001.h5'.format(dataset, data_advance, datatype))
 
 epochs = 10
 model.compile(optimizer=SGD(lr=0.0001, decay=1e-4, momentum=0.9, nesterov=True)
@@ -253,7 +297,7 @@ model.fit_generator(train_data_gen,
                     #                     class_weight=class_weights,
                     callbacks=[early_stopping]
                     )
-model.save('./model/{}/{}_{}/ResNet101_lr00001.h5'.format(dataset, preprocess, datatype))
+model.save('./model/{}/{}_{}/ResNet101_lr00001.h5'.format(dataset, data_advance, datatype))
 
 # epochs = 10
 #
@@ -279,7 +323,7 @@ model.save('./model/{}/{}_{}/ResNet101_lr00001.h5'.format(dataset, preprocess, d
 #                     callbacks=[early_stopping]
 #                     )
 #
-# model.save('./model/{}/{}_{}/ResNet101_step2.h5'.format(dataset, preprocess, datatype))
+# model.save('./model/{}/{}_{}/ResNet101_step2.h5'.format(dataset, data_advance, datatype))
 
 # # Evaluate
 # model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
