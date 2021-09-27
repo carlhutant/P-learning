@@ -4,6 +4,7 @@ warnings.filterwarnings('ignore')
 
 import numpy as np
 import os
+import cv2
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import optimizers
@@ -29,8 +30,8 @@ preprocess = 'none'
 ##############################
 
 batch_size = 128
-train_dir = 'E:/Dataset/{}/{}/train/'.format(dataset, datatype)
-val_dir = 'E:/Dataset/{}/{}/val/'.format(dataset, datatype)
+train_dir = 'G:/Dataset/{}/{}/{}/train/'.format(dataset, datatype, preprocess)
+val_dir = 'G:/Dataset/{}/{}/{}/val/'.format(dataset, datatype, preprocess)
 IMG_SHAPE = 224
 
 epochs = 20
@@ -68,7 +69,6 @@ elif dataset == 'imagenet':
 
 # image_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
 image_gen = ImageDataGenerator()
-# image_gen = ImageDataGenerator()
 train_data_gen = image_gen.flow_from_directory(
     batch_size=batch_size,
     directory=train_dir,
@@ -80,8 +80,8 @@ train_data_gen = image_gen.flow_from_directory(
 )
 
 # image_gen_val = ImageDataGenerator(preprocessing_function=preprocess_input)
-image_gen_val = ImageDataGenerator()
-val_data_gen = image_gen_val.flow_from_directory(
+# image_gen_val = ImageDataGenerator()
+val_data_gen = image_gen.flow_from_directory(
     batch_size=batch_size,
     directory=val_dir,
     target_size=(IMG_SHAPE, IMG_SHAPE),
@@ -121,7 +121,7 @@ model = Model(inputs=base_model.input, outputs=predictions)
 # keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                            rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
-model.compile(optimizer=SGD(lr=0.1, decay=1e-4, momentum=0.9, nesterov=True)
+model.compile(optimizer=SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
@@ -142,7 +142,7 @@ model.fit_generator(train_data_gen,
 model.save('./model/{}/{}_{}/ResNet101_lr01.h5'.format(dataset, preprocess, datatype))
 
 epochs = 10
-model.compile(optimizer=SGD(lr=0.01, decay=1e-4, momentum=0.9, nesterov=True)
+model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 model.fit_generator(train_data_gen,
                     steps_per_epoch=STEP_SIZE_TRAIN,
@@ -155,7 +155,7 @@ model.fit_generator(train_data_gen,
 model.save('./model/{}/{}_{}/ResNet101_lr001.h5'.format(dataset, preprocess, datatype))
 
 epochs = 10
-model.compile(optimizer=SGD(lr=0.001, decay=1e-4, momentum=0.9, nesterov=True)
+model.compile(optimizer=SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 model.fit_generator(train_data_gen,
                     steps_per_epoch=STEP_SIZE_TRAIN,
@@ -168,7 +168,7 @@ model.fit_generator(train_data_gen,
 model.save('./model/{}/{}_{}/ResNet101_lr0001.h5'.format(dataset, preprocess, datatype))
 
 epochs = 10
-model.compile(optimizer=SGD(lr=0.0001, decay=1e-4, momentum=0.9, nesterov=True)
+model.compile(optimizer=SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 model.fit_generator(train_data_gen,
                     steps_per_epoch=STEP_SIZE_TRAIN,
