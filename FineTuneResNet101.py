@@ -30,8 +30,8 @@ preprocess = 'none'
 ##############################
 
 batch_size = 128
-train_dir = './data/{}/{}/train/'.format(dataset, datatype)
-val_dir = './data/{}/{}/val/'.format(dataset, datatype)
+train_dir = 'G:/Dataset/{}/{}/{}/train/'.format(dataset, datatype, preprocess)
+val_dir = 'G:/Dataset/{}/{}/{}/val/'.format(dataset, datatype, preprocess)
 IMG_SHAPE = 224
 
 epochs = 20
@@ -145,7 +145,7 @@ early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 STEP_SIZE_TRAIN = train_data_gen.n // train_data_gen.batch_size
 STEP_SIZE_VALID = val_data_gen.n // val_data_gen.batch_size
 
-model.save('./model/{}/{}_{}/ResNet101_step0.h5'.format(dataset, preprocess, datatype))
+# model.save('./model/{}/{}_{}/ResNet101_step0.h5'.format(dataset, preprocess, datatype))
 
 model.fit_generator(test_gen,
                     steps_per_epoch=STEP_SIZE_TRAIN,
