@@ -5,6 +5,7 @@ warnings.filterwarnings('ignore')
 import numpy as np
 import os
 import tensorflow as tf
+import cv2
 from tensorflow import keras
 from tensorflow.keras import optimizers
 from tensorflow.keras.optimizers import Adam
@@ -29,8 +30,8 @@ preprocess = 'none'
 ##############################
 
 batch_size = 128
-train_dir = 'E:/Dataset/{}/{}/train/'.format(dataset, datatype)
-val_dir = 'E:/Dataset/{}/{}/val/'.format(dataset, datatype)
+train_dir = './data/{}/{}/train/'.format(dataset, datatype)
+val_dir = './data/{}/{}/val/'.format(dataset, datatype)
 IMG_SHAPE = 224
 
 epochs = 20
@@ -67,31 +68,33 @@ elif dataset == 'imagenet':
     unseen_class_num = 0
 
 
-def crop_generator(batches, new_size):
+def crop_generator(batches):
     while True:
         batch_x, batch_y = next(batches)
-        x = batch_x.shape[1] // 2
-        y = batch_x.shape[2] // 2
-        size = new_size // 2
-        yield batch_x[:, x - size:x + size, y - size:y + size], batch_y
+        # x = batch_x.shape[1] // 2
+        # y = batch_x.shape[2] // 2
+        # size = new_size // 2
+        # yield batch_x[:, x - size:x + size, y - size:y + size], batch_y
+        yield batch_x, batch_y
 
 
-# image_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
-image_gen = ImageDataGenerator()
+image_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
+# image_gen = ImageDataGenerator()
 # image_gen = ImageDataGenerator()
 train_data_gen = image_gen.flow_from_directory(
     batch_size=batch_size,
     directory=train_dir,
-    shuffle=False,
+    shuffle=True,
     color_mode="rgb",
     target_size=(IMG_SHAPE, IMG_SHAPE),
     class_mode='categorical',
     seed=42
 )
+test_gen = crop_generator(train_data_gen)
 
 # image_gen_val = ImageDataGenerator(preprocessing_function=preprocess_input)
-image_gen_val = ImageDataGenerator()
-val_data_gen = image_gen_val.flow_from_directory(
+# image_gen_val = ImageDataGenerator()
+val_data_gen = image_gen.flow_from_directory(
     batch_size=batch_size,
     directory=val_dir,
     target_size=(IMG_SHAPE, IMG_SHAPE),
@@ -144,7 +147,7 @@ STEP_SIZE_VALID = val_data_gen.n // val_data_gen.batch_size
 
 model.save('./model/{}/{}_{}/ResNet101_step0.h5'.format(dataset, preprocess, datatype))
 
-model.fit_generator(train_data_gen,
+model.fit_generator(test_gen,
                     steps_per_epoch=STEP_SIZE_TRAIN,
                     epochs=epochs,
                     validation_data=val_data_gen,
