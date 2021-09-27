@@ -6,6 +6,7 @@ import numpy as np
 import os
 import tensorflow as tf
 import cv2
+import random
 from tensorflow import keras
 from tensorflow.keras import optimizers
 from tensorflow.keras.optimizers import Adam
@@ -54,6 +55,7 @@ elif dataset == 'AWA2':
     class_num = 50
     seen_class_num = 40
     unseen_class_num = 10
+    file_type = '.jpg'
 elif dataset == 'plant':
     class_attr_shape = (46,)
     class_attr_dim = 46
@@ -66,18 +68,77 @@ elif dataset == 'imagenet':
     class_num = 1000
     seen_class_num = 1000
     unseen_class_num = 0
+    file_type = '.JPEG'
 
 
-def crop_generator(batches):
+# 考慮 shuffle every epoch
+def img_generator(target_directory, color_mode, shuffle=False):
+    walk_generator = os.walk(target_directory)
+    root, directory, _ = next(walk_generator)
+    instance_list = []
+    class_count = 0
+    for d in directory:
+        walk_generator2 = os.walk(root + d)
+        flies_root, _, files = next(walk_generator2)
+        for file in files:
+            if file.endswith(file_type):
+                instance_list.append({'path': os.path.join(flies_root, file), 'label': class_count})
+        class_count = class_count + 1
+    file_num = len(instance_list)
+    print("Found {} images belonging to {} classes.".format(file_num, class_count))
+    if shuffle:
+        new_instance_list = []
+        while len(instance_list):
+            rand_num = random.randint(0, len(instance_list) - 1)
+            new_instance_list.append(instance_list[rand_num])
+            del instance_list[rand_num]
+        instance_list = new_instance_list
     while True:
-        batch_x, batch_y = next(batches)
+        for instance in instance_list:
+            img = cv2.imread(instance['path'])
+            if color_mode == "RGB":
+                img = img[..., ::-1]
+            img = np.array(img, dtype=np.float32)
+            label = np.zeros(seen_class_num, dtype=np.float32)
+            label[instance['label']] = 1
+            yield img, label
+
+
+# 考慮加入 last batch 捨去功能, rotate
+def crop_generator(target_directory, batch_size=1, crop_type=None, crop_w=256, crop_h=256, resize_short_edge_max=256,
+                   resize_short_edge_min=256, horizontal_flip=False, color_mode="BGR", shuffle=True, seed=0):
+    img_gen = img_generator(target_directory, shuffle=shuffle, color_mode=color_mode)
+    random.seed(seed)
+    while True:
+        batch_feature = np.empty([0, crop_h, crop_w, 3], dtype=np.float32)
+        batch_label = np.empty([0, seen_class_num], dtype=np.float32)
+        for i in range(batch_size):
+            img, label = next(img_gen)
+            height, width, _ = img.shape
+            new_height = random.randint(resize_short_edge_min, resize_short_edge_max+1)
+            new_width = round(width*new_height/height)
+            img = cv2.resize(img, (new_width, new_height))
+            if crop_type == "random":   # 先不處理 crop 過大的情況
+                y0 = random.randint(0, new_height - crop_h + 1)
+                x0 = random.randint(0, new_width - crop_w + 1)
+                y1 = y0 + crop_h
+                x1 = x0 + crop_w
+                img = img[y0:y1, x0:x1, :]
+            img = img[np.newaxis, ...]
+            label = label[np.newaxis, ...]
+            batch_feature = np.concatenate((batch_feature, img), 0)
+            batch_label = np.concatenate((batch_label, label), 0)
+
         # x = batch_x.shape[1] // 2
         # y = batch_x.shape[2] // 2
         # size = new_size // 2
         # yield batch_x[:, x - size:x + size, y - size:y + size], batch_y
-        yield batch_x, batch_y
+        yield batch_feature, batch_label
 
 
+img_gen = crop_generator(train_dir, batch_size=4, crop_type="random", crop_w=224, crop_h=224, resize_short_edge_max=480,
+                         resize_short_edge_min=256,  shuffle=False, color_mode="BGR", seed=486)
+a = next(img_gen)
 image_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
 # image_gen = ImageDataGenerator()
 # image_gen = ImageDataGenerator()
@@ -102,7 +163,6 @@ val_data_gen = image_gen.flow_from_directory(
     color_mode="rgb",
     seed=42
 )
-
 
 # class_weights = class_weight.compute_class_weight(
 #            'balanced',
@@ -129,7 +189,6 @@ predictions = Dense(seen_class_num, activation='softmax')(x)
 
 # Constructure
 model = Model(inputs=base_model.input, outputs=predictions)
-
 
 # compile
 # model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
