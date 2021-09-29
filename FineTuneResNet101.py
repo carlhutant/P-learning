@@ -21,6 +21,10 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.optimizers import SGD
 
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+
 # Import data
 # change the dataset here###
 dataset = 'AWA2'
@@ -251,7 +255,8 @@ early_stopping = EarlyStopping(monitor='val_loss',
                                verbose=1)
 model_checkpoint = ModelCheckpoint('/home/ai2020/ne6091069/p_learning/model/{}/{}/{}/{}_crop/'.format(dataset, datatype, data_advance, crop_type),
                                    save_weights_only=True,
-                                   save_freq='epoch')
+                                   save_freq='epoch',
+                                   verbose=1)
 reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
                                          factor=0.1,
                                          patience=5,
