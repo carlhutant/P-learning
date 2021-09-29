@@ -2,16 +2,10 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import numpy as np
-import os
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import optimizers
-from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.applications.resnet import ResNet101, preprocess_input
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
-from tensorflow.keras import backend as K
-from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.utils import to_categorical
@@ -20,7 +14,7 @@ from tensorflow.keras.optimizers import SGD
 
 # Import data
 # change the dataset here###
-dataset = 'imagenet'
+dataset = 'AWA2'
 # datatype: img, tfrecord
 datatype = 'tfrecord'
 # data preprocess: color_diff_121, none
@@ -28,7 +22,7 @@ preprocess = 'none'
 ##############################
 
 batch_size = 128
-dataset_directory = 'F:/Dataset/{}/{}/{}/'.format(dataset, datatype, preprocess)
+dataset_directory = '/home/ai2020/ne6091069/Dataset/{}/{}/{}/'.format(dataset, datatype, preprocess)
 IMG_SHAPE = 224
 train_cardinality = 0
 val_cardinality = 0
@@ -70,52 +64,18 @@ if preprocess == 'color_diff_121':
     IMG_channel = 6
 elif preprocess == 'none':
     IMG_channel = 3
-#
-# image_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
-# train_data_gen = image_gen.flow_from_directory(
-#     batch_size=batch_size,
-#     directory=train_dir,
-#     shuffle=True,
-#     color_mode="rgb",
-#     target_size=(IMG_SHAPE, IMG_SHAPE),
-#     class_mode='categorical',
-#     seed=42
-# )
-#
-# image_gen_val = ImageDataGenerator(preprocessing_function=preprocess_input)
-#
-# val_data_gen = image_gen_val.flow_from_directory(
-#     batch_size=batch_size,
-#     directory=val_dir,
-#     target_size=(IMG_SHAPE, IMG_SHAPE),
-#     class_mode='categorical',
-#     color_mode="rgb",
-#     seed=42
-# )
-#
-# class_weights = class_weight.compute_class_weight(
-#            'balanced',
-#             np.unique(train_data_gen.classes),
-#             train_data_gen.classes)
 
 
-# 1 tfrecord dataset
-def tf_parse1(raw_example):
-    parsed = tf.train.Example.FromString(raw_example.numpy())
-    feature = np.array(parsed.features.feature['feature'].float_list.value)
-    label = np.array(parsed.features.feature['label'].int64_list.value)
-    return feature, label
-
-
-# 2 tfrecord dataset
-def tf_parse2(raw_example):
+def tf_parse(raw_example):
     example = tf.io.parse_example(
         raw_example[tf.newaxis], {
-            'feature': tf.io.FixedLenFeature(shape=(1, IMG_SHAPE*IMG_SHAPE*IMG_channel), dtype=tf.float32),
-            'label': tf.io.FixedLenFeature(shape=seen_class_num, dtype=tf.float32)
+            'shape': tf.io.VarLenFeature(dtype=tf.int64),
+            'feature': tf.io.VarLenFeature(dtype=tf.float32),
+            'label': tf.io.VarLenFeature(dtype=tf.float32)
         })
-    feature = tf.reshape(example['feature'][0], [IMG_SHAPE, IMG_SHAPE, IMG_channel])
-    # feature = preprocess_input(feature)
+    shape = tf.sparse.to_dense(example['shape'])
+    shape = tf.get_static_value(shape)
+    feature = tf.reshape(example['feature'][0], shape)
     label = example['label'][0]
     return feature, label
 
@@ -138,40 +98,33 @@ val_dataset = tf.data.TFRecordDataset(val_files_list)
 train_dataset.apply(tf.data.experimental.assert_cardinality(train_cardinality))
 val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
 
-train_dataset = train_dataset.map(tf_parse2)
-val_dataset = val_dataset.map(tf_parse2)
+train_dataset = train_dataset.map(tf_parse)
+val_dataset = val_dataset.map(tf_parse)
 train_dataset = train_dataset.batch(batch_size)
 val_dataset = val_dataset.batch(batch_size)
 # train_dataset = train_dataset.repeat(15)
 # val_dataset = val_dataset.repeat(15)
 # val_dataset.shuffle()
-# x = train_dataset.take(1)
-# a = 0
+x = train_dataset.take(1)
+a = 0
 # # Fine tune or Retrain ResNet101
-model = ResNet101(weights='imagenet', include_top=True)
+base_model = ResNet101(weights='imagenet', include_top=False)
 
-# # lock the model
-# for layer in base_model.layers:
-#     layer.trainable = False
-
-# add a global averge pollinf layer
-# x = base_model.output
-# x = GlobalAveragePooling2D()(x)
-
-# add a dense
-# x = Dense(2048, activation='relu')(x)
+# add a global average pooling layer
+x = base_model.output
+x = GlobalAveragePooling2D()(x)
 
 # add a classifier
-# predictions = Dense(seen_class_num, activation='softmax')(x)
+predictions = Dense(seen_class_num, activation='softmax')(x)
 
-# Constructure
-# model = Model(inputs=base_model.input, outputs=predictions)
+# Construct
+model = Model(inputs=base_model.input, outputs=predictions)
 
 # compile
 # model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
 #               , loss='categorical_crossentropy',metrics=['accuracy'])
-# keras.utils.plot_model(model, to_file='model2.png', show_shapes=True, show_dtype=True, show_layer_names=True,
-#                            rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
+tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
+                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])

@@ -16,10 +16,14 @@ from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
 from tensorflow.keras import backend as K
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.callbacks import ReduceLROnPlateau
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.optimizers import SGD
+
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
 
 # Import data
 # change the dataset here###
@@ -30,11 +34,13 @@ datatype = 'img'
 data_advance = 'none'
 # preprocess
 preprocess = 'caffe'
+# crop
+crop_type = 'random'
 ##############################
 
 batch_size = 128
-train_dir = '/home/uscc/SSD/NE6091069/p_learning/data/{}/{}/{}/train/'.format(dataset, datatype, data_advance)
-val_dir = '/home/uscc/SSD/NE6091069/p_learning/data/{}/{}/{}/val/'.format(dataset, datatype, data_advance)
+train_dir = '/home/ai2020/ne6091069/Dataset/{}/{}/{}/train/'.format(dataset, datatype, data_advance)
+val_dir = '/home/ai2020/ne6091069/Dataset/{}/{}/{}/val/'.format(dataset, datatype, data_advance)
 IMG_SHAPE = 224
 
 
@@ -66,11 +72,8 @@ elif dataset == 'plant':
     seen_class_num = 25
     unseen_class_num = 13
 elif dataset == 'imagenet':
-    class_attr_shape = (0,)
-    class_attr_dim = 0
     class_num = 1000
     seen_class_num = 1000
-    unseen_class_num = 0
     file_type = '.JPEG'
     train_cardinality = 1281167
     val_cardinality = 50000
@@ -161,7 +164,7 @@ def crop_generator(target_directory, batch_size=1, crop_type=None, crop_w=256, c
 train_data_gen = crop_generator(
     train_dir,
     batch_size=batch_size,
-    crop_type="random",
+    crop_type=crop_type,
     crop_w=IMG_SHAPE,
     crop_h=IMG_SHAPE,
     resize_short_edge_max=480,
@@ -174,7 +177,7 @@ train_data_gen = crop_generator(
 val_data_gen = crop_generator(
     val_dir,
     batch_size=batch_size,
-    crop_type="random",
+    crop_type=crop_type,
     crop_w=IMG_SHAPE,
     crop_h=IMG_SHAPE,
     resize_short_edge_max=480,
@@ -216,24 +219,26 @@ val_data_gen = crop_generator(
 
 
 ## Fine tune or Retrain ResNet101
-base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 3))
+mirrored_strategy = tf.distribute.MirroredStrategy()
+with mirrored_strategy.scope():
+    base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 3))
 
 # # lock the model
 # for layer in base_model.layers:
 #     layer.trainable = False
 
 # add a global averge pollinf layer
-x = base_model.output
-x = GlobalAveragePooling2D()(x)
+    x = base_model.output
+    x = GlobalAveragePooling2D()(x)
 
 # add a dense
 # x = Dense(1024, activation='relu')(x)
 
 # add a classifier
-predictions = Dense(seen_class_num, activation='softmax')(x)
+    predictions = Dense(seen_class_num, activation='softmax')(x)
 
 # Constructure
-model = Model(inputs=base_model.input, outputs=predictions)
+    model = Model(inputs=base_model.input, outputs=predictions)
 
 # compile
 # model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
@@ -242,14 +247,24 @@ model = Model(inputs=base_model.input, outputs=predictions)
 #                            rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 
-early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
+early_stopping = EarlyStopping(monitor='val_loss',
+                               patience=10,
+                               verbose=1)
+model_checkpoint = ModelCheckpoint('/home/ai2020/ne6091069/p_learning/model/{}/{}/{}/{}_crop/'.format(dataset, datatype, data_advance, crop_type),
+                                   save_weights_only=True,
+                                   save_freq='epoch',
+                                   verbose=1)
+reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
+                                         factor=0.1,
+                                         patience=5,
+                                         verbose=1,
+                                         min_delta=1,
+                                         min_lr=0.00001)
 
 STEP_SIZE_TRAIN = train_cardinality // batch_size
 STEP_SIZE_VALID = val_cardinality // batch_size
 
-model.save('./model/{}/{}_{}/ResNet101_step0_crop.h5'.format(dataset, data_advance, datatype))
-
-epochs = 30
+epochs = 100
 model.compile(optimizer=SGD(lr=0.1, decay=1e-4, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 model.fit_generator(train_data_gen,
@@ -257,63 +272,9 @@ model.fit_generator(train_data_gen,
                     epochs=epochs,
                     validation_data=val_data_gen,
                     validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
+                    # class_weight=class_weights,
+                    callbacks=[model_checkpoint, reduce_LR_on_plateau]
                     )
-model.save('./model/{}/{}_{}/ResNet101_lr01_crop.h5'.format(dataset, data_advance, datatype))
-
-epochs = 30
-model.compile(optimizer=SGD(lr=0.01, decay=1e-4, momentum=0.9, nesterov=True)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
-                    )
-model.save('./model/{}/{}_{}/ResNet101_lr001_crop.h5'.format(dataset, data_advance, datatype))
-
-epochs = 30
-model.compile(optimizer=SGD(lr=0.001, decay=1e-4, momentum=0.9, nesterov=True)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
-                    )
-model.save('./model/{}/{}_{}/ResNet101_lr0001_crop.h5'.format(dataset, data_advance, datatype))
-
-epochs = 30
-model.compile(optimizer=SGD(lr=0.0001, decay=1e-4, momentum=0.9, nesterov=True)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
-                    )
-model.save('./model/{}/{}_{}/ResNet101_lr00001_crop.h5'.format(dataset, data_advance, datatype))
-
-epochs = 30
-model.compile(optimizer=SGD(lr=0.00001, decay=1e-4, momentum=0.9, nesterov=True)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
-                    )
-model.save('./model/{}/{}_{}/ResNet101_lr00001_crop.h5'.format(dataset, data_advance, datatype))
-
 # epochs = 10
 #
 # for layer in model.layers[:335]:
