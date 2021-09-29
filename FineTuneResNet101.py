@@ -23,7 +23,7 @@ from tensorflow.keras.optimizers import SGD
 
 # Import data
 # change the dataset here###
-dataset = 'imagenet'
+dataset = 'AWA2'
 # datatype: img, tfrecord
 datatype = 'img'
 # data data_advance: color_diff_121, none
@@ -33,8 +33,8 @@ preprocess = 'caffe'
 ##############################
 
 batch_size = 128
-train_dir = '/home/uscc/HDD3/Dataset/{}/{}/{}/train/'.format(dataset, datatype, data_advance)
-val_dir = '/home/uscc/HDD3/Dataset/{}/{}/{}/val/'.format(dataset, datatype, data_advance)
+train_dir = '/home/uscc/SSD/NE6091069/p_learning/data/{}/{}/{}/train/'.format(dataset, datatype, data_advance)
+val_dir = '/home/uscc/SSD/NE6091069/p_learning/data/{}/{}/{}/val/'.format(dataset, datatype, data_advance)
 IMG_SHAPE = 224
 
 
