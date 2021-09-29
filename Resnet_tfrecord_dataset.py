@@ -22,7 +22,7 @@ preprocess = 'none'
 ##############################
 
 batch_size = 128
-dataset_directory = 'F:/Dataset/{}/{}/{}/'.format(dataset, datatype, preprocess)
+dataset_directory = '/home/ai2020/ne6091069/Dataset/{}/{}/{}/'.format(dataset, datatype, preprocess)
 IMG_SHAPE = 224
 train_cardinality = 0
 val_cardinality = 0
