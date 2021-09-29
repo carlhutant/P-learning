@@ -47,10 +47,10 @@ process_type = 'none'
 #     return feature
 
 
-def np_instance_to_tf_example(shape, np_feature, np_label):
+def np_instance_to_tf_example(np_shape, np_feature, np_label):
     # condirm data format
-    shape = shape.reshape(-1)
-    shape = np.array(shape, dtype=np.int64)
+    np_shape = np_shape.reshape(-1)
+    np_shape = np.array(np_shape, dtype=np.int64)
     np_feature = np_feature.reshape(-1)
     np_feature = np.array(np_feature, dtype=np.float32)
     np_label = np_label.reshape(-1)
@@ -102,7 +102,7 @@ def multiprocess_func(id, instance_list):
             result_directory + result_tf_file + '.tfrecord-' + str(split_count * process_max + id).zfill(5))
         for instance in instance_list:
             image, label = file_load(instance)
-            shape = image.shape
+            shape = np.array(image.shape, dtype=np.int64)
             if process_type == 'none':
                 feature = feature_processing(image)
                 serialized_example = np_instance_to_tf_example(shape, feature, label)
