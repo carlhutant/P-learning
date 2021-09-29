@@ -14,7 +14,7 @@ from tensorflow.keras.optimizers import SGD
 
 # Import data
 # change the dataset here###
-dataset = 'imagenet'
+dataset = 'AWA2'
 # datatype: img, tfrecord
 datatype = 'tfrecord'
 # data preprocess: color_diff_121, none
