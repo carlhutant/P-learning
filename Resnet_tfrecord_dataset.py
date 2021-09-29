@@ -73,7 +73,7 @@ def tf_parse(raw_example):
             'feature': tf.io.VarLenFeature(dtype=tf.float32),
             'label': tf.io.VarLenFeature(dtype=tf.float32)
         })
-    shape = tf.sparse_tensor_to_dense(example['shape'])
+    shape = tf.sparse.to_dense(example['shape']).numpy()
     feature = tf.reshape(example['feature'][0], shape)
     label = example['label'][0]
     return feature, label
