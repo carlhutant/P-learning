@@ -16,7 +16,7 @@ from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
 from tensorflow.keras import backend as K
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.callbacks import ReduceLROnPlateau
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.optimizers import SGD
@@ -246,12 +246,21 @@ with mirrored_strategy.scope():
 #                            rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 
-early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
+early_stopping = EarlyStopping(monitor='val_loss',
+                               patience=10,
+                               verbose=1)
+model_checkpoint = ModelCheckpoint('/home/ai2020/ne6091069/p_learning/model/{}/{}/{}/{}_crop/'.format(dataset, datatype, data_advance, crop_type),
+                                   save_weights_only=True,
+                                   save_freq='epoch')
+reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
+                                         factor=0.1,
+                                         patience=5,
+                                         min_lr=0.00001)
 
 STEP_SIZE_TRAIN = train_cardinality // batch_size
 STEP_SIZE_VALID = val_cardinality // batch_size
 
-epochs = 30
+epochs = 100
 model.compile(optimizer=SGD(lr=0.1, decay=1e-4, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 model.fit_generator(train_data_gen,
@@ -259,63 +268,9 @@ model.fit_generator(train_data_gen,
                     epochs=epochs,
                     validation_data=val_data_gen,
                     validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
+                    # class_weight=class_weights,
+                    callbacks=[ModelCheckpoint, ReduceLROnPlateau]
                     )
-model.save('./model/{}/{}/{}/{}_crop/ResNet101_lr_e-1.h5'.format(dataset, data_advance, datatype, crop_type))
-
-epochs = 30
-model.compile(optimizer=SGD(lr=0.01, decay=1e-4, momentum=0.9, nesterov=True)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
-                    )
-model.save('./model/{}/{}/{}/{}_crop/ResNet101_lr_e-2.h5'.format(dataset, data_advance, datatype, crop_type))
-
-epochs = 30
-model.compile(optimizer=SGD(lr=0.001, decay=1e-4, momentum=0.9, nesterov=True)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
-                    )
-model.save('./model/{}/{}/{}/{}_crop/ResNet101_lr_e-3.h5'.format(dataset, data_advance, datatype, crop_type))
-
-epochs = 30
-model.compile(optimizer=SGD(lr=0.0001, decay=1e-4, momentum=0.9, nesterov=True)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
-                    )
-model.save('./model/{}/{}/{}/{}_crop/ResNet101_lr_e-4.h5'.format(dataset, data_advance, datatype, crop_type))
-
-epochs = 30
-model.compile(optimizer=SGD(lr=0.00001, decay=1e-4, momentum=0.9, nesterov=True)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
-                    )
-model.save('./model/{}/{}/{}/{}_crop/ResNet101_lr_e-5.h5'.format(dataset, data_advance, datatype, crop_type))
-
 # epochs = 10
 #
 # for layer in model.layers[:335]:
