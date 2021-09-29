@@ -255,6 +255,8 @@ model_checkpoint = ModelCheckpoint('/home/ai2020/ne6091069/p_learning/model/{}/{
 reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
                                          factor=0.1,
                                          patience=5,
+                                         verbose=1,
+                                         min_delta=1,
                                          min_lr=0.00001)
 
 STEP_SIZE_TRAIN = train_cardinality // batch_size
