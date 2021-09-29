@@ -23,7 +23,7 @@ from tensorflow.keras.optimizers import SGD
 
 # Import data
 # change the dataset here###
-dataset = 'agenet'
+dataset = 'imagenet'
 # datatype: img, tfrecord
 datatype = 'img'
 # data data_advance: color_diff_121, none
@@ -247,7 +247,7 @@ early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 STEP_SIZE_TRAIN = train_cardinality // batch_size
 STEP_SIZE_VALID = val_cardinality // batch_size
 
-model.save('./model/{}/{}_{}/ResNet101_step0.h5'.format(dataset, data_advance, datatype))
+model.save('./model/{}/{}_{}/ResNet101_step0_crop.h5'.format(dataset, data_advance, datatype))
 
 epochs = 30
 model.compile(optimizer=SGD(lr=0.1, decay=1e-4, momentum=0.9, nesterov=True)
@@ -260,7 +260,7 @@ model.fit_generator(train_data_gen,
                     #                     class_weight=class_weights,
                     callbacks=[early_stopping]
                     )
-model.save('./model/{}/{}_{}/ResNet101_lr01.h5'.format(dataset, data_advance, datatype))
+model.save('./model/{}/{}_{}/ResNet101_lr01_crop.h5'.format(dataset, data_advance, datatype))
 
 epochs = 30
 model.compile(optimizer=SGD(lr=0.01, decay=1e-4, momentum=0.9, nesterov=True)
@@ -273,7 +273,7 @@ model.fit_generator(train_data_gen,
                     #                     class_weight=class_weights,
                     callbacks=[early_stopping]
                     )
-model.save('./model/{}/{}_{}/ResNet101_lr001.h5'.format(dataset, data_advance, datatype))
+model.save('./model/{}/{}_{}/ResNet101_lr001_crop.h5'.format(dataset, data_advance, datatype))
 
 epochs = 30
 model.compile(optimizer=SGD(lr=0.001, decay=1e-4, momentum=0.9, nesterov=True)
@@ -286,7 +286,7 @@ model.fit_generator(train_data_gen,
                     #                     class_weight=class_weights,
                     callbacks=[early_stopping]
                     )
-model.save('./model/{}/{}_{}/ResNet101_lr0001.h5'.format(dataset, data_advance, datatype))
+model.save('./model/{}/{}_{}/ResNet101_lr0001_crop.h5'.format(dataset, data_advance, datatype))
 
 epochs = 30
 model.compile(optimizer=SGD(lr=0.0001, decay=1e-4, momentum=0.9, nesterov=True)
@@ -299,7 +299,7 @@ model.fit_generator(train_data_gen,
                     #                     class_weight=class_weights,
                     callbacks=[early_stopping]
                     )
-model.save('./model/{}/{}_{}/ResNet101_lr00001.h5'.format(dataset, data_advance, datatype))
+model.save('./model/{}/{}_{}/ResNet101_lr00001_crop.h5'.format(dataset, data_advance, datatype))
 
 epochs = 30
 model.compile(optimizer=SGD(lr=0.00001, decay=1e-4, momentum=0.9, nesterov=True)
@@ -312,7 +312,7 @@ model.fit_generator(train_data_gen,
                     #                     class_weight=class_weights,
                     callbacks=[early_stopping]
                     )
-model.save('./model/{}/{}_{}/ResNet101_lr00001.h5'.format(dataset, data_advance, datatype))
+model.save('./model/{}/{}_{}/ResNet101_lr00001_crop.h5'.format(dataset, data_advance, datatype))
 
 # epochs = 10
 #
