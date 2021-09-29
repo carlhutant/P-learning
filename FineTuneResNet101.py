@@ -39,8 +39,8 @@ crop_type = 'random'
 ##############################
 
 batch_size = 128
-train_dir = '/home/ai2020/ne6091069/Dataset/{}/{}/{}/train/'.format(dataset, datatype, data_advance)
-val_dir = '/home/ai2020/ne6091069/Dataset/{}/{}/{}/val/'.format(dataset, datatype, data_advance)
+train_dir = '/media/uscc/HDD2/Dataset/{}/{}/{}/train/'.format(dataset, datatype, data_advance)
+val_dir = '/media/uscc/HDD2/Dataset/{}/{}/{}/val/'.format(dataset, datatype, data_advance)
 IMG_SHAPE = 224
 
 
@@ -250,7 +250,7 @@ with mirrored_strategy.scope():
 early_stopping = EarlyStopping(monitor='val_loss',
                                patience=10,
                                verbose=1)
-model_checkpoint = ModelCheckpoint('/home/ai2020/ne6091069/p_learning/model/{}/{}/{}/{}_crop/'.format(dataset, datatype, data_advance, crop_type),
+model_checkpoint = ModelCheckpoint('/media/uscc/SSD/NE6091069/p_learning/model/{}/{}/{}/{}_crop/'.format(dataset, datatype, data_advance, crop_type),
                                    save_weights_only=True,
                                    save_freq='epoch',
                                    verbose=1)
