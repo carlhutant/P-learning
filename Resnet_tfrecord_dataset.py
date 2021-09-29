@@ -69,11 +69,11 @@ elif preprocess == 'none':
 def tf_parse(raw_example):
     example = tf.io.parse_example(
         raw_example[tf.newaxis], {
+            'shape': tf.io.VarLenFeature(dtype=tf.int64),
             'feature': tf.io.VarLenFeature(dtype=tf.float32),
             'label': tf.io.VarLenFeature(dtype=tf.float32)
         })
-    feature = tf.reshape(example['feature'][0], [IMG_SHAPE, IMG_SHAPE, IMG_channel])
-    # feature = preprocess_input(feature)
+    feature = tf.reshape(example['feature'][0], example['shape'])
     label = example['label'][0]
     return feature, label
 
@@ -96,15 +96,15 @@ val_dataset = tf.data.TFRecordDataset(val_files_list)
 train_dataset.apply(tf.data.experimental.assert_cardinality(train_cardinality))
 val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
 
-train_dataset = train_dataset.map(tf_parse2)
-val_dataset = val_dataset.map(tf_parse2)
+train_dataset = train_dataset.map(tf_parse)
+val_dataset = val_dataset.map(tf_parse)
 train_dataset = train_dataset.batch(batch_size)
 val_dataset = val_dataset.batch(batch_size)
 # train_dataset = train_dataset.repeat(15)
 # val_dataset = val_dataset.repeat(15)
 # val_dataset.shuffle()
-# x = train_dataset.take(1)
-# a = 0
+x = train_dataset.take(1)
+a = 0
 # # Fine tune or Retrain ResNet101
 base_model = ResNet101(weights='imagenet', include_top=False)
 
