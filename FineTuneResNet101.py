@@ -32,9 +32,9 @@ data_advance = 'none'
 preprocess = 'caffe'
 ##############################
 
-batch_size = 16
-train_dir = './data/{}/{}/train/'.format(dataset, datatype)
-val_dir = './data/{}/{}/val/'.format(dataset, datatype)
+batch_size = 128
+train_dir = 'G:/Dataset/{}/{}/{}/train/'.format(dataset, datatype, data_advance)
+val_dir = 'G:/Dataset/{}/{}/{}/val/'.format(dataset, datatype, data_advance)
 IMG_SHAPE = 224
 
 epochs = 20
@@ -58,8 +58,8 @@ elif dataset == 'AWA2':
     seen_class_num = 40
     unseen_class_num = 10
     file_type = '.jpg'
-    train_cardinality = 24265
-    val_cardinality = 6070
+    train_cardinality = 58176
+    val_cardinality = 15872
 elif dataset == 'plant':
     class_attr_shape = (46,)
     class_attr_dim = 46
