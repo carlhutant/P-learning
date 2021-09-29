@@ -57,7 +57,7 @@ def np_instance_to_tf_example(np_shape, np_feature, np_label):
     np_label = np.array(np_label, dtype=np.float32)
 
     # ndarray to tf.train.Feature
-    tf_feature_shape = tf.train.Feature(int64_list=tf.train.Int64List(value=shape))
+    tf_feature_shape = tf.train.Feature(int64_list=tf.train.Int64List(value=np_shape))
     tf_feature_feature = tf.train.Feature(float_list=tf.train.FloatList(value=np_feature))
     tf_feature_label = tf.train.Feature(float_list=tf.train.FloatList(value=np_label))
 
