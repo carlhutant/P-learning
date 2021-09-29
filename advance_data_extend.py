@@ -18,7 +18,7 @@ elif dataset == 'imagenet':
     class_num = 1000
 
 
-thread_max = 48
+process_max = 48
 split_max = 100
 target_directory = '/home/ai2020/ne6091069/Dataset/{}/img/none/{}/'.format(dataset, data_usage)
 result_directory = '/home/ai2020/ne6091069/Dataset/{}/tfrecord/none/'.format(dataset)
@@ -104,7 +104,7 @@ def process_func(id, instance_list):
     if save_file_type == 'tfrecord':
         split_count = 0
         image_count = 0
-        writer = tf.io.TFRecordWriter(result_directory + result_tf_file + '.tfrecord-' + str(split_count*thread_max+id).zfill(5))
+        writer = tf.io.TFRecordWriter(result_directory + result_tf_file + '.tfrecord-' + str(split_count*process_max+id).zfill(5))
         for instance in instance_list:
             image, label = file_load(instance)
             feature = feature_processing(image)
@@ -118,7 +118,7 @@ def process_func(id, instance_list):
                 split_count = split_count + 1
                 # print(split_count)
                 writer = tf.io.TFRecordWriter(
-                    result_directory + result_tf_file + '.tfrecord-' + str(split_count*thread_max+id).zfill(5))
+                    result_directory + result_tf_file + '.tfrecord-' + str(split_count*process_max+id).zfill(5))
         writer.close()
     elif save_file_type == 'origin':
         for instance in instance_list:
@@ -165,14 +165,14 @@ if __name__ == "__main__":
 
     random.seed(486)
     random.shuffle(instance_list)
-    if thread_max == 0:
+    if process_max == 0:
         no_thread_func(instance_list)
     else:
         processes = []
-        for i in range(thread_max):
-            processes.append(multiprocessing.Process(target=process_func, args=(i, instance_list[i::thread_max])))
+        for i in range(process_max):
+            processes.append(multiprocessing.Process(target=process_func, args=(i, instance_list[i::process_max])))
             processes[i].start()
-        for i in range(thread_max):
+        for i in range(process_max):
             processes[i].join()
         print('done')
 
