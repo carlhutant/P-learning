@@ -269,7 +269,7 @@ model.fit_generator(train_data_gen,
                     validation_data=val_data_gen,
                     validation_steps=STEP_SIZE_VALID,
                     # class_weight=class_weights,
-                    callbacks=[ModelCheckpoint, ReduceLROnPlateau]
+                    callbacks=[model_checkpoint, reduce_LR_on_plateau]
                     )
 # epochs = 10
 #
