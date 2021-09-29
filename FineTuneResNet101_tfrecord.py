@@ -50,20 +50,21 @@ elif dataset == 'AWA2':
     class_num = 50
     seen_class_num = 40
     unseen_class_num = 10
-elif dataset == 'imagenet':
-    class_attr_shape = (85,)
-    class_attr_dim = 85
-    class_num = 1000
-    seen_class_num = 1000
-    unseen_class_num = 10
-    train_cardinality = 1281167
-    val_cardinality = 50000
+    file_type = '.jpg'
+    train_cardinality = 58176
+    val_cardinality = 15872
 elif dataset == 'plant':
     class_attr_shape = (46,)
     class_attr_dim = 46
     class_num = 38
     seen_class_num = 25
     unseen_class_num = 13
+elif dataset == 'imagenet':
+    class_num = 1000
+    seen_class_num = 1000
+    file_type = '.JPEG'
+    train_cardinality = 1281167
+    val_cardinality = 50000
 
 if preprocess == 'color_diff_121':
     IMG_channel = 6

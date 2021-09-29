@@ -3,21 +3,30 @@ import tensorflow as tf
 import numpy as np
 import cv2
 import random
-import threading
 import multiprocessing
 from scipy import signal
 
+# Import data
+# change the dataset here###
+dataset = 'AWA2'
+data_usage = 'train'
+if dataset == 'AWA2':
+    file_type = '.jpg'
+    class_num = 40
+elif dataset == 'imagenet':
+    file_type = '.JPEG'
+    class_num = 1000
+
+
 thread_max = 48
 split_max = 100
-file_type = '.JPEG'
-target_directory = 'E:/Dataset/imagenet/img/train/'
-result_directory = 'E:/Dataset/imagenet/tfrecord/none/'
-result_tf_file = 'train'
+target_directory = '/home/ai2020/ne6091069/Dataset/{}/img/none/{}/'.format(dataset, data_usage)
+result_directory = '/home/ai2020/ne6091069/Dataset/{}/tfrecord/none/'.format(dataset)
+result_tf_file = data_usage
 verbose = False
-class_num = 1000
 # save_file_type: origin, tfrecord
-save_file_type = 'origin'
-process_type = 'rgb_sw_021'
+save_file_type = 'tfrecord'
+process_type = 'none'
 
 
 def _dtype_feature(ndarray):
@@ -72,8 +81,8 @@ def np_instance_to_example(np_feature, np_label):
 
 def file_load(instance_in):
     image = cv2.imread(instance_in['path'])
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_AREA)
+    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_AREA)
     # cv2.imshow("image", image)
 
     label = np.zeros(class_num, dtype=np.float32)
@@ -86,12 +95,12 @@ def feature_processing(image):
     # # custom edge
     # # filter id 121
     # feature = color_diff_121(image)
-    feature = image[..., [0, 2, 1]]
-
+    # feature = image[..., [0, 2, 1]]
+    feature = image
     return feature
 
 
-def thread_func(id, instance_list):
+def process_func(id, instance_list):
     if save_file_type == 'tfrecord':
         split_count = 0
         image_count = 0
@@ -140,20 +149,15 @@ def no_thread_func(instance_list):
 if __name__ == "__main__":
     class_count = 0
     walk_generator = os.walk(target_directory)
-    walk_generator2 = os.walk('D:/Program/Python/P_learning/data/AWA2/test_draw/')  #
     root, directory, _ = next(walk_generator)
-    _, directory2, _ = next(walk_generator2)
     class_num = len(directory)
     instance_list = []
-    for i in range(len(directory)):
-        if directory[i] != directory2[i]:
-            a = 0
     for d in directory:
         print(d, class_count)
         walk_generator2 = os.walk(root + d)
         flies_root, _, files = next(walk_generator2)
         for file in files:
-            if file.endswith(target_file_type):
+            if file.endswith(file_type):
                 if not os.path.splitext(file)[0].endswith("_extend"):
                     instance_list.append({'path': os.path.join(flies_root, file), 'label': class_count})
         class_count = class_count + 1
@@ -164,13 +168,12 @@ if __name__ == "__main__":
     if thread_max == 0:
         no_thread_func(instance_list)
     else:
-        threads = []
+        processes = []
         for i in range(thread_max):
-            threads.append(multiprocessing.Process(target=thread_func, args=(i, instance_list[i::thread_max])))
-            # threads.append(threading.Thread(target=thread_func, args=(i, instance_list[i::thread_max])))
-            threads[i].start()
+            processes.append(multiprocessing.Process(target=process_func, args=(i, instance_list[i::thread_max])))
+            processes[i].start()
         for i in range(thread_max):
-            threads[i].join()
+            processes[i].join()
         print('done')
 
     # # special edge

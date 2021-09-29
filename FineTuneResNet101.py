@@ -72,11 +72,8 @@ elif dataset == 'plant':
     seen_class_num = 25
     unseen_class_num = 13
 elif dataset == 'imagenet':
-    class_attr_shape = (0,)
-    class_attr_dim = 0
     class_num = 1000
     seen_class_num = 1000
-    unseen_class_num = 0
     file_type = '.JPEG'
     train_cardinality = 1281167
     val_cardinality = 50000
