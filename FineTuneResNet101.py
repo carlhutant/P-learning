@@ -31,7 +31,7 @@ preprocess = 'caffe'
 crop_type = 'random'
 ##############################
 
-batch_size = 128
+batch_size = 16
 dataset_dir = configure.dataset_dir
 model_dir = configure.model_dir
 train_dir = '{}/{}/{}/{}/train/'.format(dataset_dir, dataset, datatype, data_advance)
