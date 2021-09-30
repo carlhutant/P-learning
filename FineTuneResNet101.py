@@ -38,7 +38,7 @@ train_dir = '{}/{}/{}/{}/train/'.format(dataset_dir, dataset, datatype, data_adv
 val_dir = '{}/{}/{}/{}/val/'.format(dataset_dir, dataset, datatype, data_advance)
 ckp_dir = '{}/{}/{}/{}_crop/'.format(model_dir, dataset, datatype, data_advance, crop_type)
 IMG_SHAPE = 224
-dataset_shrink_ratio = 10
+dataset_shrink_ratio = 1
 multi_GPU = False
 GPU_memory_growth = False
 
@@ -243,7 +243,7 @@ else:
 
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-model_checkpoint = ModelCheckpoint(model_dir, save_weights_only=True, save_freq='epoch', verbose=1)
+model_checkpoint = ModelCheckpoint(ckp_dir, save_weights_only=True, save_freq='epoch', verbose=1)
 reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
                                          factor=0.1,
                                          patience=5,
