@@ -54,8 +54,8 @@ if dataset == 'AWA2':
     seen_class_num = 40
     unseen_class_num = 10
     file_type = '.jpg'
-    train_cardinality = 58176
-    val_cardinality = 15872
+    train_cardinality = 24264
+    val_cardinality = 6070
 elif dataset == 'imagenet':
     class_num = 1000
     seen_class_num = 1000
@@ -87,7 +87,7 @@ def img_generator(target_directory, color_mode, shuffle=False):
                 instance_list.append({'path': os.path.join(flies_root, file), 'label': class_count})
         class_count = class_count + 1
     file_num = len(instance_list)
-    print("Found {} images belonging to {} classes.".format(file_num, class_count))
+    # print("Found {} images belonging to {} classes.".format(file_num, class_count))
     if shuffle:
         new_instance_list = []
         while len(instance_list):
@@ -206,13 +206,13 @@ else:
 #                            rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 
-early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-model_checkpoint = ModelCheckpoint(ckp_path, save_weights_only=False, save_freq='epoch', verbose=1)
+early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1)
+model_checkpoint = ModelCheckpoint(ckp_path, save_weights_only=False, save_freq='epoch', verbose=0)
 reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
                                          factor=0.1,
                                          patience=5,
                                          verbose=1,
-                                         min_delta=1000,
+                                         min_delta=1,
                                          min_lr=0.00001)
 
 STEP_SIZE_TRAIN = train_cardinality // batch_size
@@ -227,13 +227,13 @@ except:
 
 model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit(train_data_gen,
-          steps_per_epoch=STEP_SIZE_TRAIN,
-          epochs=epochs,
-          validation_data=val_data_gen,
-          validation_steps=STEP_SIZE_VALID,
-          callbacks=[model_checkpoint, reduce_LR_on_plateau]
-          )
+model.fit_generator(train_data_gen,
+                    steps_per_epoch=STEP_SIZE_TRAIN,
+                    epochs=epochs,
+                    validation_data=val_data_gen,
+                    validation_steps=STEP_SIZE_VALID,
+                    callbacks=[model_checkpoint, reduce_LR_on_plateau]
+                    )
 # epochs = 10
 #
 # for layer in model.layers[:335]:
