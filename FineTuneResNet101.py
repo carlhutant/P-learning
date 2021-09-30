@@ -38,25 +38,14 @@ preprocess = 'caffe'
 crop_type = 'random'
 ##############################
 
-batch_size = 128
+batch_size = 16
 train_dir = '/home/ai2020/ne6091069/Dataset/{}/{}/{}/train/'.format(dataset, datatype, data_advance)
 val_dir = '/home/ai2020/ne6091069/Dataset/{}/{}/{}/val/'.format(dataset, datatype, data_advance)
 IMG_SHAPE = 224
+dataset_shrink_ratio = 10
 
 
-if dataset == 'SUN':
-    class_attr_shape = (102,)
-    class_attr_dim = 102
-    class_num = 717
-    seen_class_num = 645
-    unseen_class_num = 72
-elif dataset == 'CUB':
-    class_attr_shape = (312,)
-    class_attr_dim = 312
-    class_num = 200
-    seen_class_num = 150
-    unseen_class_num = 50
-elif dataset == 'AWA2':
+if dataset == 'AWA2':
     class_attr_shape = (85,)
     class_attr_dim = 85
     class_num = 50
@@ -65,19 +54,21 @@ elif dataset == 'AWA2':
     file_type = '.jpg'
     train_cardinality = 58176
     val_cardinality = 15872
-elif dataset == 'plant':
-    class_attr_shape = (46,)
-    class_attr_dim = 46
-    class_num = 38
-    seen_class_num = 25
-    unseen_class_num = 13
 elif dataset == 'imagenet':
     class_num = 1000
     seen_class_num = 1000
     file_type = '.JPEG'
     train_cardinality = 1281167
     val_cardinality = 50000
+else:
+    class_num = -1
+    seen_class_num = -1
+    file_type = '...'
+    train_cardinality = -1
+    val_cardinality = -1
 
+train_cardinality = train_cardinality // dataset_shrink_ratio
+val_cardinality = val_cardinality // dataset_shrink_ratio
 
 # 考慮 shuffle every epoch
 def img_generator(target_directory, color_mode, shuffle=False):
@@ -101,8 +92,10 @@ def img_generator(target_directory, color_mode, shuffle=False):
             new_instance_list.append(instance_list[rand_num])
             del instance_list[rand_num]
         instance_list = new_instance_list
+    instance_list_len = len(instance_list)
     while True:
-        for instance in instance_list:
+        for i in range(0, instance_list_len, dataset_shrink_ratio):
+            instance = instance_list[i]
             img = cv2.imread(instance['path'])
 
             if color_mode == "RGB":
