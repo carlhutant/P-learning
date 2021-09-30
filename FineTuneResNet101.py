@@ -21,9 +21,9 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.optimizers import SGD
 
-gpus = tf.config.experimental.list_physical_devices('GPU')
-for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
+# gpus = tf.config.experimental.list_physical_devices('GPU')
+# for gpu in gpus:
+#     tf.config.experimental.set_memory_growth(gpu, True)
 
 # Import data
 # change the dataset here###
@@ -38,9 +38,11 @@ preprocess = 'caffe'
 crop_type = 'random'
 ##############################
 
-batch_size = 128
-train_dir = '/media/uscc/HDD2/Dataset/{}/{}/{}/train/'.format(dataset, datatype, data_advance)
-val_dir = '/media/uscc/HDD2/Dataset/{}/{}/{}/val/'.format(dataset, datatype, data_advance)
+batch_size = 16
+# train_dir = '/media/uscc/HDD2/Dataset/{}/{}/{}/train/'.format(dataset, datatype, data_advance)
+# val_dir = '/media/uscc/HDD2/Dataset/{}/{}/{}/val/'.format(dataset, datatype, data_advance)
+train_dir = 'F:/Dataset/{}/{}/{}/train/'.format(dataset, datatype, data_advance)
+val_dir = 'F:/Dataset/{}/{}/{}/val/'.format(dataset, datatype, data_advance)
 IMG_SHAPE = 224
 
 
@@ -63,8 +65,8 @@ elif dataset == 'AWA2':
     seen_class_num = 40
     unseen_class_num = 10
     file_type = '.jpg'
-    train_cardinality = 58176
-    val_cardinality = 15872
+    train_cardinality = 24264
+    val_cardinality = 6070
 elif dataset == 'plant':
     class_attr_shape = (46,)
     class_attr_dim = 46
@@ -219,26 +221,26 @@ val_data_gen = crop_generator(
 
 
 ## Fine tune or Retrain ResNet101
-mirrored_strategy = tf.distribute.MirroredStrategy()
-with mirrored_strategy.scope():
-    base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 3))
+# mirrored_strategy = tf.distribute.MirroredStrategy()
+# with mirrored_strategy.scope():
+base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 3))
 
 # # lock the model
 # for layer in base_model.layers:
 #     layer.trainable = False
 
 # add a global averge pollinf layer
-    x = base_model.output
-    x = GlobalAveragePooling2D()(x)
+x = base_model.output
+x = GlobalAveragePooling2D()(x)
 
 # add a dense
 # x = Dense(1024, activation='relu')(x)
 
 # add a classifier
-    predictions = Dense(seen_class_num, activation='softmax')(x)
+predictions = Dense(seen_class_num, activation='softmax')(x)
 
 # Constructure
-    model = Model(inputs=base_model.input, outputs=predictions)
+model = Model(inputs=base_model.input, outputs=predictions)
 
 # compile
 # model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
@@ -250,7 +252,7 @@ with mirrored_strategy.scope():
 early_stopping = EarlyStopping(monitor='val_loss',
                                patience=10,
                                verbose=1)
-model_checkpoint = ModelCheckpoint('/media/uscc/SSD/NE6091069/p_learning/model/{}/{}/{}/{}_crop/'.format(dataset, datatype, data_advance, crop_type),
+model_checkpoint = ModelCheckpoint('D:/NE6091069/p_learning/model/{}/{}/{}/{}_crop/'.format(dataset, datatype, data_advance, crop_type),
                                    save_weights_only=True,
                                    save_freq='epoch',
                                    verbose=1)
