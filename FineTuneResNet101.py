@@ -214,7 +214,7 @@ early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 model_checkpoint = ModelCheckpoint(ckp_path, save_weights_only=False, save_freq='epoch', verbose=0)
 reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
                                          factor=0.1,
-                                         patience=5,
+                                         patience=15,
                                          verbose=1,
                                          min_delta=1000,
                                          min_lr=0.00001)
