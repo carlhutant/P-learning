@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings('ignore')
+
 import configure
 import numpy as np
 import os
@@ -37,6 +40,7 @@ model_dir = configure.model_dir
 train_dir = '{}/{}/{}/{}/train/'.format(dataset_dir, dataset, datatype, data_advance)
 val_dir = '{}/{}/{}/{}/val/'.format(dataset_dir, dataset, datatype, data_advance)
 ckp_path = '{}/{}/{}/{}_crop/cp.ckpt'.format(model_dir, dataset, datatype, data_advance, crop_type)
+model_save_path = '{}/{}/{}/{}_crop/resnet.h5'.format(model_dir, dataset, datatype, data_advance, crop_type)
 IMG_SHAPE = 224
 dataset_shrink_ratio = 1
 multi_GPU = False
@@ -206,11 +210,11 @@ else:
 #                            rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 
-early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1)
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 model_checkpoint = ModelCheckpoint(ckp_path, save_weights_only=False, save_freq='epoch', verbose=0)
 reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
                                          factor=0.1,
-                                         patience=5,
+                                         patience=15,
                                          verbose=1,
                                          min_delta=1,
                                          min_lr=0.00001)
@@ -232,8 +236,9 @@ model.fit_generator(train_data_gen,
                     epochs=epochs,
                     validation_data=val_data_gen,
                     validation_steps=STEP_SIZE_VALID,
-                    callbacks=[model_checkpoint, reduce_LR_on_plateau]
+                    callbacks=[reduce_LR_on_plateau]
                     )
+model.save(model_save_path)
 # epochs = 10
 #
 # for layer in model.layers[:335]:
