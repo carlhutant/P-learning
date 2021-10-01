@@ -15,7 +15,6 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
 from tensorflow.keras import backend as K
 from tensorflow.keras.optimizers import SGD
-from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
@@ -236,7 +235,7 @@ model.fit_generator(train_data_gen,
                     epochs=epochs,
                     validation_data=val_data_gen,
                     validation_steps=STEP_SIZE_VALID,
-                    callbacks=[model_checkpoint, reduce_LR_on_plateau]
+                    callbacks=[reduce_LR_on_plateau]
                     )
 model.save(model_save_path)
 # epochs = 10
