@@ -38,7 +38,7 @@ dataset_dir = configure.dataset_dir
 model_dir = configure.model_dir
 train_dir = '{}/{}/{}/{}/train/'.format(dataset_dir, dataset, datatype, data_advance)
 val_dir = '{}/{}/{}/{}/val/'.format(dataset_dir, dataset, datatype, data_advance)
-ckp_path = '{}/{}/{}/{}/{}_crop/ckpt'.format(model_dir, dataset, datatype, data_advance, crop_type)
+ckpt_dir = '{}/{}/{}/{}/{}_crop/'.format(model_dir, dataset, datatype, data_advance, crop_type)
 model_save_path = '{}/{}/{}/{}/{}_crop/resnet.h5'.format(model_dir, dataset, datatype, data_advance, crop_type)
 IMG_SHAPE = 224
 dataset_shrink_ratio = 1
@@ -209,11 +209,11 @@ else:
 #                            rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 
-early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-model_checkpoint = ModelCheckpoint(ckp_path, save_weights_only=True, save_freq='epoch', verbose=1)
+early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1)
+model_checkpoint = ModelCheckpoint(ckpt_dir+'ckpt-epoch{epoch:04d}_val_accuracy-{val_accuracy:.4f}', save_weights_only=False, save_freq='epoch', verbose=1)
 reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
                                          factor=0.1,
-                                         patience=15,
+                                         patience=10,
                                          verbose=1,
                                          min_delta=1,
                                          min_lr=0.00001)
@@ -221,12 +221,13 @@ reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
 STEP_SIZE_TRAIN = train_cardinality // batch_size
 STEP_SIZE_VALID = val_cardinality // batch_size
 
-epochs = 100
-try:
-    model.load_weights(ckp_path)
-    print('check point found.')
-except:
-    print('no check point found.')
+epochs = 2000
+# try:
+#     model = tf.keras.models.load_model(ckpt_dir)
+#     # model.load_weights(ckp_path)
+#     print('check point found.')
+# except:
+#     print('no check point found.')
 
 model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
@@ -235,7 +236,7 @@ model.fit_generator(train_data_gen,
                     epochs=epochs,
                     validation_data=val_data_gen,
                     validation_steps=STEP_SIZE_VALID,
-                    callbacks=[reduce_LR_on_plateau]
+                    callbacks=[model_checkpoint, reduce_LR_on_plateau]
                     )
 model.save(model_save_path)
 # epochs = 10
