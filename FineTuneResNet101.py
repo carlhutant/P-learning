@@ -37,8 +37,10 @@ crop_type = 'random'
 batch_size = 16
 dataset_dir = configure.dataset_dir
 model_dir = configure.model_dir
-train_dir = '{}/{}/{}/{}/train/'.format(dataset_dir, dataset, datatype, data_advance)
-val_dir = '{}/{}/{}/{}/val/'.format(dataset_dir, dataset, datatype, data_advance)
+# train_dir = '{}/{}/{}/{}/train/'.format(dataset_dir, dataset, datatype, data_advance)
+# val_dir = '{}/{}/{}/{}/val/'.format(dataset_dir, dataset, datatype, data_advance)
+train_dir = '/media/uscc/HDD2/liu/electronic_pet/data/AWA2/IMG/train/'
+val_dir = '/media/uscc/HDD2/liu/electronic_pet/data/AWA2/IMG/val/'
 ckp_path = '{}/{}/{}/{}/{}_crop/ckpt'.format(model_dir, dataset, datatype, data_advance, crop_type)
 model_save_path = '{}/{}/{}/{}/{}_crop/resnet.h5'.format(model_dir, dataset, datatype, data_advance, crop_type)
 IMG_SHAPE = 224
@@ -91,7 +93,7 @@ def img_generator(target_directory, color_mode, shuffle=False):
                 instance_list.append({'path': os.path.join(flies_root, file), 'label': class_count})
         class_count = class_count + 1
     file_num = len(instance_list)
-    # print("Found {} images belonging to {} classes.".format(file_num, class_count))
+    print("Found {} images belonging to {} classes.".format(file_num, class_count))
     if shuffle:
         new_instance_list = []
         while len(instance_list):
