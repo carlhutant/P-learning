@@ -1,30 +1,41 @@
+import configure
 import os
 import tensorflow as tf
 import numpy as np
 import cv2
 import random
 import multiprocessing
+from pathlib import Path
 from scipy import signal
 
 # Import data
 # change the dataset here###
 dataset = 'AWA2'
+# datatype: img, tfrecord
+datatype = 'img'
+# data data_advance: color_diff_121, color_diff_121_3ch, none
+data_advance = 'color_diff_121_abs_3ch'
+
 data_usage = 'train'
+
 if dataset == 'AWA2':
     file_type = '.jpg'
     class_num = 40
 elif dataset == 'imagenet':
     file_type = '.JPEG'
     class_num = 1000
+else:
+    file_type = 'none'
+    class_num = -1
 
-process_max = 48
-split_max = 15
-target_directory = '/home/ai2020/ne6091069/Dataset/{}/img/none/{}/'.format(dataset, data_usage)
-result_directory = '/home/ai2020/ne6091069/Dataset/{}/tfrecord/none/'.format(dataset)
-result_tf_file = data_usage
+process_num = 48
+split_num = 15
+dataset_dir = configure.dataset_dir
+target_directory = Path('{}/{}/{}/none/{}/'.format(dataset_dir, dataset, datatype, data_usage))
+result_directory = Path('{}/{}/{}/{}/{}/'.format(dataset_dir, dataset, datatype, data_advance, data_usage))
 verbose = False
-# save_file_type: origin, tfrecord
-save_file_type = 'tfrecord'
+# result_format: none, img, tfrecord, npy
+result_format = 'npy'
 process_type = 'none'
 
 
@@ -94,55 +105,38 @@ def feature_processing(image):
     return feature
 
 
-def multiprocess_func(id, instance_list):
-    if save_file_type == 'tfrecord':
+def process_func(id, instance_list):
+    if result_format == 'tfrecord':
         split_count = 0
         image_count = 0
         writer = tf.io.TFRecordWriter(
-            result_directory + result_tf_file + '.tfrecord-' + str(split_count * process_max + id).zfill(5))
+            result_directory + result_tf_file + '.tfrecord-' + str(split_count * process_num + id).zfill(5))
         for instance in instance_list:
             image, label = file_load(instance)
             shape = np.array(image.shape, dtype=np.int64)
-            if process_type == 'none':
-                feature = feature_processing(image)
-                serialized_example = np_instance_to_tf_example(shape, feature, label)
-            else:
-                serialized_example = np_instance_to_tf_example(shape, image, label)
+            feature = feature_processing(image)
+            serialized_example = np_instance_to_tf_example(shape, feature, label)
             writer.write(serialized_example)
             image_count = image_count + 1
             if id == 0:
                 print(str(image_count) + '/' + str(len(instance_list)))
-            if image_count % split_max == 0:
+            if image_count % split_num == 0:
                 writer.close()
                 split_count = split_count + 1
                 # print(split_count)
                 writer = tf.io.TFRecordWriter(
-                    result_directory + result_tf_file + '.tfrecord-' + str(split_count * process_max + id).zfill(5))
+                    result_directory + result_tf_file + '.tfrecord-' + str(split_count * process_num + id).zfill(5))
         writer.close()
-    elif save_file_type == 'origin':
+    elif result_format == 'img':
         for instance in instance_list:
             image, _ = file_load(instance)
             feature = feature_processing(image)
             split_file_name = os.path.splitext(instance['path'])
             save_file_name = split_file_name[0] + '_' + process_type + split_file_name[1]
             cv2.imwrite(save_file_name, feature)
-
-
-def no_thread_func(instance_list):
-    split_count = 0
-    image_count = 0
-    writer = tf.io.TFRecordWriter(result_directory + result_tf_file + '.tfrecord-' + str(split_count).zfill(5))
-    for instance in instance_list:
-        serialized_example = file_processing(instance)
-        writer.write(serialized_example)
-        image_count = image_count + 1
-        if image_count % split_max == 0:
-            writer.close()
-            split_count = split_count + 1
-            # print(split_count)
-            writer = tf.io.TFRecordWriter(
-                result_directory + result_tf_file + '.tfrecord-' + str(split_count).zfill(5))
-    writer.close()
+    elif result_format == 'npy':
+        for instance in instance_list:
+            a=0
 
 
 if __name__ == "__main__":
@@ -153,25 +147,35 @@ if __name__ == "__main__":
     instance_list = []
     for d in directory:
         print(d, class_count)
-        walk_generator2 = os.walk(root + d)
+        walk_generator2 = os.walk(Path(root).joinpath(d))
         flies_root, _, files = next(walk_generator2)
         for file in files:
             if file.endswith(file_type):
-                if not os.path.splitext(file)[0].endswith("_extend"):
-                    instance_list.append({'path': os.path.join(flies_root, file), 'label': class_count})
+                instance_list.append({'path': Path(flies_root).joinpath(file), 'label': class_count})
         class_count = class_count + 1
     file_num = len(instance_list)
 
     random.seed(486)
     random.shuffle(instance_list)
-    if process_max == 0:
-        no_thread_func(instance_list)
+
+    if not Path.is_dir(Path(result_directory).parent):
+        Path.mkdir(Path(result_directory).parent)
+    if not Path.is_dir(Path(result_directory)):
+        Path.mkdir(Path(result_directory))
+    if not result_format == 'tfrecord':
+        for d in directory:
+            if not Path.is_dir(Path(result_directory).joinpath(d)):
+                Path.mkdir(Path(result_directory).joinpath(d))
+
+    if process_num == 0:
+        process_func(0, instance_list)
+        a = 0
     else:
         processes = []
-        for i in range(process_max):
-            processes.append(multiprocessing.Process(target=multiprocess_func, args=(i, instance_list[i::process_max])))
+        for i in range(process_num):
+            processes.append(multiprocessing.Process(target=process_func, args=(i, instance_list[i::process_num])))
             processes[i].start()
-        for i in range(process_max):
+        for i in range(process_num):
             processes[i].join()
         print('done')
 
