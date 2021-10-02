@@ -7,6 +7,7 @@ import os
 import tensorflow as tf
 import cv2
 import random
+import math
 from tensorflow import keras
 from tensorflow.keras import optimizers
 from tensorflow.keras.optimizers import Adam
@@ -30,21 +31,21 @@ data_advance = 'none'
 preprocess = 'caffe'
 color_mode = "BGR"
 
-train_shuffle = False
-train_shuffle_every_epoch = False
+train_shuffle = True
+train_shuffle_every_epoch = True
 val_shuffle = False
 val_shuffle_every_epoch = False
 random_seed = 486
 
-batch_size = 256
+batch_size = 16
 train_final_batch_opt = 'complete'
 val_final_batch_opt = 'complete'
-train_resize_short_edge_max = 256
+train_resize_short_edge_max = 480
 train_resize_short_edge_min = 256
 train_IMG_SHAPE = 224
 
-train_horizontal_flip = False
-train_crop_type = 'center'
+train_horizontal_flip = True
+train_crop_type = 'random'
 train_crop_w = train_IMG_SHAPE
 train_crop_h = train_IMG_SHAPE
 
@@ -212,17 +213,17 @@ val_data_gen = crop_generator(
 )
 next(val_data_gen)
 
-# test final_batch_opt
-a = next(train_data_gen)
-file_remain_num = train_cardinality-batch_size
-batch_data_num = min(batch_size, file_remain_num)
-count = 0
-while file_remain_num > 0:
-    count = count + 1
-    print(count)
-    b = next(train_data_gen)
-    file_remain_num = file_remain_num - batch_size
-c = next(train_data_gen)
+# # test final_batch_opt
+# a = next(train_data_gen)
+# file_remain_num = train_cardinality-batch_size
+# batch_data_num = min(batch_size, file_remain_num)
+# count = 0
+# while file_remain_num > 0:
+#     count = count + 1
+#     print(count)
+#     b = next(train_data_gen)
+#     file_remain_num = file_remain_num - batch_size
+# c = next(train_data_gen)
 
 # Fine tune or Retrain ResNet101
 if multi_GPU:
@@ -234,7 +235,7 @@ if multi_GPU:
         # # add a dense
         # x = Dense(1024, activation='relu')(x)
         # add a classifier
-        predictions = Dense(seen_class_num, activation='softmax')(x)
+        predictions = Dense(class_num, activation='softmax')(x)
         # Construction
         model = Model(inputs=base_model.input, outputs=predictions)
 else:
@@ -244,7 +245,7 @@ else:
     # # add a dense
     # x = Dense(1024, activation='relu')(x)
     # add a classifier
-    predictions = Dense(seen_class_num, activation='softmax')(x)
+    predictions = Dense(class_num, activation='softmax')(x)
     # Construction
     model = Model(inputs=base_model.input, outputs=predictions)
 
@@ -268,10 +269,10 @@ reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
                                          min_delta=1,
                                          min_lr=0.00001)
 
-STEP_SIZE_TRAIN = train_cardinality // batch_size
-STEP_SIZE_VALID = val_cardinality // batch_size
+STEP_SIZE_TRAIN = math.ceil(train_cardinality / batch_size)
+STEP_SIZE_VALID = math.ceil(val_cardinality / batch_size)
 
-epochs = 100
+epochs = 2000
 # try:
 #     model = tf.keras.models.load_model(ckpt_dir)
 #     # model.load_weights(ckp_path)
