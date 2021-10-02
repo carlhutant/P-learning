@@ -245,7 +245,7 @@ model.fit_generator(train_data_gen,
                     validation_steps=STEP_SIZE_VALID,
                     callbacks=[model_checkpoint]
                     )
-model.save(model_save_path)
+# model.save(model_save_path)
 # epochs = 10
 #
 # for layer in model.layers[:335]:
