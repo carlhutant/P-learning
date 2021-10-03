@@ -21,45 +21,58 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.optimizers import SGD
 
-# datatype: img, tfrecord
-# data_advance: color_diff_121, none
-# preprocess: caffe
-# color_mode: BGR, RGB, none
-dataset = 'AWA2'
-datatype = 'img'
-data_advance = 'none'
-preprocess = 'caffe'
-color_mode = "BGR"
-
+# Dataset config #
+dataset = 'AWA2'  # AWA2, imagenet
+datatype = 'img'  # img, tfrecord
+data_advance = 'none'   # color_diff_121, none
+preprocess = 'caffe'  # caffe, none
+color_mode = "BGR"  # BGR, RGB, none
+########################################
+# Shuffle set #
+random_seed = 486
 train_shuffle = True
 train_shuffle_every_epoch = True
 val_shuffle = False
 val_shuffle_every_epoch = False
-random_seed = 486
-
-batch_size = 16
+########################################
+# Batch set #
+train_batch_size = 16
 train_final_batch_opt = 'complete'
+val_batch_size = 1
 val_final_batch_opt = 'complete'
+########################################
+# Image set #
+train_horizontal_flip = True
 train_resize_short_edge_max = 480
 train_resize_short_edge_min = 256
 train_IMG_SHAPE = 224
 
-train_horizontal_flip = True
+val_horizontal_flip = False
+val_resize_short_edge_max = 480
+val_resize_short_edge_min = 480
+val_IMG_SHAPE = train_IMG_SHAPE
+########################################
+# Crop set #
 train_crop_type = 'random'
 train_crop_w = train_IMG_SHAPE
 train_crop_h = train_IMG_SHAPE
 
+val_crop_type = 'ten_crop'
+val_crop_w = train_crop_w
+val_crop_h = train_crop_h
+########################################
+# GPU set #
 multi_GPU = False
 GPU_memory_growth = False
-
-
+########################################
+# Directory set
 dataset_dir = configure.dataset_dir
 model_dir = configure.model_dir
 train_dir = '{}/{}/{}/{}/train/'.format(dataset_dir, dataset, datatype, data_advance)
 val_dir = '{}/{}/{}/{}/val/'.format(dataset_dir, dataset, datatype, data_advance)
 ckpt_dir = '{}/{}/{}/{}/{}_crop/'.format(model_dir, dataset, datatype, data_advance, train_crop_type)
 model_save_path = '{}/{}/{}/{}/{}_crop/final/'.format(model_dir, dataset, datatype, data_advance, train_crop_type)
-
+########################################
 
 if GPU_memory_growth:
     gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -112,21 +125,8 @@ def img_generator(target_directory, shuffle, shuffle_every_epoch):
             random.shuffle(instance_list)
 
 
-###############################################
-# target_directory: 目錄
-# batch_size
-# crop_type: random, center, none
-# crop_h: height
-# crop_w: width
-# resize_short_edge_max
-# resize_short_edge_min
-# horizontal_flip: True, False
-# color_mode='BGR', 'RGB'
-# shuffle: True, False
-# seed: random seed
-###############################################
 # 考慮加入 last batch 捨去功能, rotate
-def crop_generator(target_directory, final_batch_opt, crop_type, crop_h, crop_w, resize_short_edge_max,
+def crop_generator(target_directory, batch_size, final_batch_opt, crop_type, crop_h, crop_w, resize_short_edge_max,
                    resize_short_edge_min, horizontal_flip, shuffle, shuffle_every_epoch):
     img_gen = img_generator(target_directory, shuffle, shuffle_every_epoch)
     file_num, dir_num = next(img_gen)
@@ -134,6 +134,8 @@ def crop_generator(target_directory, final_batch_opt, crop_type, crop_h, crop_w,
     if file_num != train_cardinality and file_num != val_cardinality:
         raise RuntimeError
     if dir_num != class_num:
+        raise RuntimeError
+    if crop_type == 'ten_crop' and batch_size != 1:
         raise RuntimeError
     yield
     random.seed(random_seed)
@@ -150,44 +152,70 @@ def crop_generator(target_directory, final_batch_opt, crop_type, crop_h, crop_w,
             raise RuntimeError
         for i in range(batch_data_num):
             img, label = next(img_gen)
+            label = label[np.newaxis, ...]
             if horizontal_flip:
                 if random.randint(0, 1):
                     img = img[:, ::-1, :]
             height, width, _ = img.shape
-            if height < width:
+            if crop_type == 'none':
+                new_height = crop_h
+                new_width = crop_w
+            elif height < width:
                 new_height = random.randint(resize_short_edge_min, resize_short_edge_max)
                 new_width = round(width * new_height / height)
             else:
                 new_width = random.randint(resize_short_edge_min, resize_short_edge_max)
                 new_height = round(height * new_width / width)
             img = cv2.resize(img, (new_width, new_height))
-            if crop_type == 'center':  # center crop 尚未完成
-                crop = cv2.resize(img, (crop_w, crop_h))
+
+            y0_list = []
+            x0_list = []
+            if crop_type == 'none':
+                y0_list.append(0)
+                x0_list.append(0)
+            elif crop_type == 'center':
+                center_y = math.ceil(new_height/2)
+                center_x = math.ceil(new_width/2)
+                y0_list.append(center_y - math.ceil(crop_h/2) + 1)
+                x0_list.append(center_x - math.ceil(crop_w/2) + 1)
             elif crop_type == 'random':  # 先不處理 crop 大於原圖的情況
-                y0 = random.randint(0, new_height - crop_h)
-                x0 = random.randint(0, new_width - crop_w)
-                y1 = y0 + crop_h
-                x1 = x0 + crop_w
-                crop = img[y0:y1, x0:x1, :]
+                y0_list.append(random.randint(0, new_height - crop_h))
+                x0_list.append(random.randint(0, new_width - crop_w))
+            elif crop_type == 'ten_crop':
+                center_y = math.ceil(new_height / 2)
+                center_x = math.ceil(new_width / 2)
+                y0_list.append(center_y - math.ceil(crop_h / 2) + 1)
+                x0_list.append(center_x - math.ceil(crop_w / 2) + 1)
+                y0_list.extend([0, 0, new_height - crop_h, new_height - crop_h])
+                x0_list.extend([0, new_width - crop_h, 0, new_width - crop_h])
             else:
-                crop = cv2.resize(img, (crop_w, crop_h))
-            if preprocess == 'caffe':
-                if color_mode == 'BGR':
-                    crop = crop - np.array([[[103.939, 116.779, 123.68]]], dtype=np.float32)
-                elif color_mode == 'RGB':
-                    crop = crop - np.array([123.68, 116.779, 103.939], dtype=np.float32)
-            crop = crop[np.newaxis, ...]
-            label = label[np.newaxis, ...]
-            batch_feature = np.concatenate((batch_feature, crop), 0)
-            batch_label = np.concatenate((batch_label, label), 0)
+                raise RuntimeError
+            crop_list = []
+            for y0, x0 in zip(y0_list, x0_list):
+                crop = img[y0:y0+crop_h, x0:x0+crop_w, :]
+                crop_list.append(crop)
+                if crop_type == 'ten_crop':
+                    crop_list.append(crop[:, ::-1, :])
+            for crop in crop_list:
+                if preprocess == 'caffe':
+                    if color_mode == 'BGR':
+                        crop = crop - np.array([[[103.939, 116.779, 123.68]]], dtype=np.float32)
+                    elif color_mode == 'RGB':
+                        crop = crop - np.array([123.68, 116.779, 103.939], dtype=np.float32)
+                    else:
+                        raise RuntimeError
+                crop = crop[np.newaxis, ...]
+                batch_feature = np.concatenate((batch_feature, crop), 0)
+                batch_label = np.concatenate((batch_label, label), 0)
         yield batch_feature, batch_label
         file_remain_num = file_remain_num - batch_size
-        if file_remain_num<1:
+        if file_remain_num < 1:
             file_remain_num = file_num
 
 
 train_data_gen = crop_generator(
     target_directory=train_dir,
+    batch_size=train_batch_size,
     final_batch_opt=train_final_batch_opt,
     crop_type=train_crop_type,
     crop_h=train_crop_h,
@@ -201,20 +229,21 @@ train_data_gen = crop_generator(
 next(train_data_gen)
 val_data_gen = crop_generator(
     target_directory=val_dir,
+    batch_size=val_batch_size,
     final_batch_opt=val_final_batch_opt,
-    crop_type=train_crop_type,
-    crop_w=train_crop_h,
-    crop_h=train_crop_w,
-    resize_short_edge_max=train_resize_short_edge_max,
-    resize_short_edge_min=train_resize_short_edge_min,
-    horizontal_flip=train_horizontal_flip,
+    crop_type=val_crop_type,
+    crop_w=val_crop_h,
+    crop_h=val_crop_w,
+    resize_short_edge_max=val_resize_short_edge_max,
+    resize_short_edge_min=val_resize_short_edge_min,
+    horizontal_flip=val_horizontal_flip,
     shuffle=val_shuffle,
     shuffle_every_epoch=val_shuffle_every_epoch
 )
 next(val_data_gen)
 
-# # test final_batch_opt
-# a = next(train_data_gen)
+# test final_batch_opt
+a = next(train_data_gen)
 # file_remain_num = train_cardinality-batch_size
 # batch_data_num = min(batch_size, file_remain_num)
 # count = 0
@@ -269,26 +298,30 @@ reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
                                          min_delta=1,
                                          min_lr=0.00001)
 
-STEP_SIZE_TRAIN = math.ceil(train_cardinality / batch_size)
-STEP_SIZE_VALID = math.ceil(val_cardinality / batch_size)
+# STEP_SIZE_TRAIN = 1
+STEP_SIZE_TRAIN = math.ceil(train_cardinality / train_batch_size)
+STEP_SIZE_VALID = math.ceil(val_cardinality / val_batch_size)
 
-epochs = 2000
-# try:
-#     model = tf.keras.models.load_model(ckpt_dir)
-#     # model.load_weights(ckp_path)
-#     print('check point found.')
-# except:
-#     print('no check point found.')
+epochs = 1
+try:
+    # model = tf.keras.models.load_model(ckp_path)
+    # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
+    # model.load_weights(ckp_path)
+    # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
+    model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061\\variables\\variables')
+    print('check point found.')
+except:
+    print('no check point found.')
 
 model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    callbacks=[model_checkpoint]
-                    )
+# model.fit_generator(train_data_gen,
+#                     steps_per_epoch=STEP_SIZE_TRAIN,
+#                     epochs=epochs,
+#                     validation_data=val_data_gen,
+#                     validation_steps=STEP_SIZE_VALID,
+#                     # callbacks=[model_checkpoint]
+#                     )
 # model.save(model_save_path)
 # epochs = 10
 #
@@ -316,10 +349,18 @@ model.fit_generator(train_data_gen,
 #
 # model.save('./model/{}/{}_{}/ResNet101_step2.h5'.format(dataset, data_advance, datatype))
 
-# # Evaluate
-# model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-#               , loss='categorical_crossentropy', metrics=['accuracy'])
-# # model.load_weights("./model/AWA2/FineTuneResNet101_edge_with_head.h5")
-# # STEP_SIZE_VALID = val_data_gen.n // val_data_gen.batch_size
+# Evaluate
 # score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
 # print(score)
+total_count = 0
+positive_count = 0
+for i in range(STEP_SIZE_VALID):
+    print(i)
+    x = next(val_data_gen)
+    y = model.predict(x[0])
+    y = y.sum(axis=0)
+    maxarg = y.argmax(axis=0)
+    if x[1][0][maxarg] == 1:
+        positive_count = positive_count + 1
+    total_count = total_count + 1
+print(positive_count/total_count)
