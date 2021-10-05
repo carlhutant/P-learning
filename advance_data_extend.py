@@ -16,7 +16,7 @@ datatype = 'img'
 # data data_advance: color_diff_121, color_diff_121_3ch, none
 data_advance = 'color_diff_121'
 # data usage: train, val, test
-data_usage = 'train'
+data_usage = 'val'
 
 if dataset == 'AWA2':
     file_type = '.jpg'
@@ -29,7 +29,7 @@ else:
     class_num = -1
     raise RuntimeError
 
-process_num = 6
+process_num = 32
 split_num = 15
 dataset_dir = configure.dataset_dir
 target_directory = Path('{}/{}/{}/none/{}/'.format(dataset_dir, dataset, datatype, data_usage))

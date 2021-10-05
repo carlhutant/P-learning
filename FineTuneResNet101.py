@@ -38,7 +38,7 @@ val_shuffle_every_epoch = False
 # Batch set #
 train_batch_size = 16
 train_final_batch_opt = 'complete'
-val_batch_size = 1
+val_batch_size = 16
 val_final_batch_opt = 'complete'
 ########################################
 # Image set #
@@ -49,7 +49,7 @@ train_IMG_SHAPE = 224
 
 val_horizontal_flip = False
 val_resize_short_edge_max = 480
-val_resize_short_edge_min = 480
+val_resize_short_edge_min = 256
 val_IMG_SHAPE = train_IMG_SHAPE
 ########################################
 # Crop set #
@@ -57,7 +57,7 @@ train_crop_type = 'random'
 train_crop_w = train_IMG_SHAPE
 train_crop_h = train_IMG_SHAPE
 
-val_crop_type = 'ten_crop'
+val_crop_type = 'random'
 val_crop_w = train_crop_w
 val_crop_h = train_crop_h
 ########################################
@@ -283,12 +283,12 @@ else:
 
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1)
-model_checkpoint = ModelCheckpoint(ckpt_dir + 'ckpt-epoch{epoch:04d}'
+model_checkpoint = ModelCheckpoint(ckpt_dir + 'ckpt-epoch{epoch+87:04d}'
                                             + '_loss-{loss:.4f}'
                                             + '_accuracy-{accuracy:.4f}'
                                             + '_val_loss-{val_loss:.4f}'
                                             + '_val_accuracy-{val_accuracy:.4f}',
-                                   save_weights_only=False,
+                                   save_weights_only=True,
                                    save_freq='epoch',
                                    verbose=0)
 reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
@@ -302,26 +302,26 @@ reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
 STEP_SIZE_TRAIN = math.ceil(train_cardinality / train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality / val_batch_size)
 
-epochs = 1
+epochs = 2000
 try:
     # model = tf.keras.models.load_model(ckp_path)
     # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
     # model.load_weights(ckp_path)
     # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
-    model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061\\variables\\variables')
+    model.load_weights('/media/uscc/SSD/NE6091069/p_learning/model/AWA2/img/none/random_crop/ckpt-epoch0087_loss-0.1589_accuracy-0.9526_val_loss-181.5382_val_accuracy-0.6387')
     print('check point found.')
 except:
     print('no check point found.')
 
-model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=False)
+model.compile(optimizer=SGD(learning_rate=0.01, decay=1e-4, momentum=0.9, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
-# model.fit_generator(train_data_gen,
-#                     steps_per_epoch=STEP_SIZE_TRAIN,
-#                     epochs=epochs,
-#                     validation_data=val_data_gen,
-#                     validation_steps=STEP_SIZE_VALID,
-#                     # callbacks=[model_checkpoint]
-#                     )
+model.fit_generator(train_data_gen,
+                    steps_per_epoch=STEP_SIZE_TRAIN,
+                    epochs=epochs,
+                    validation_data=val_data_gen,
+                    validation_steps=STEP_SIZE_VALID,
+                    callbacks=[model_checkpoint]
+                    )
 # model.save(model_save_path)
 # epochs = 10
 #
@@ -352,15 +352,15 @@ model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nestero
 # Evaluate
 # score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
 # print(score)
-total_count = 0
-positive_count = 0
-for i in range(STEP_SIZE_VALID):
-    print(i)
-    x = next(val_data_gen)
-    y = model.predict(x[0])
-    y = y.sum(axis=0)
-    maxarg = y.argmax(axis=0)
-    if x[1][0][maxarg] == 1:
-        positive_count = positive_count + 1
-    total_count = total_count + 1
-print(positive_count/total_count)
+# total_count = 0
+# positive_count = 0
+# for i in range(STEP_SIZE_VALID):
+#     print(i)
+#     x = next(val_data_gen)
+#     y = model.predict(x[0])
+#     y = y.sum(axis=0)
+#     maxarg = y.argmax(axis=0)
+#     if x[1][0][maxarg] == 1:
+#         positive_count = positive_count + 1
+#     total_count = total_count + 1
+# print(positive_count/total_count)

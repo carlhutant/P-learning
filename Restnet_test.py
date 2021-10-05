@@ -293,6 +293,7 @@ else:
 STEP_SIZE_TRAIN = math.ceil(train_cardinality / train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality / val_batch_size)
 
+print('resize_short_edge=480')
 target_dir = Path(configure.model_dir).joinpath('AWA2').joinpath('img').joinpath('none').joinpath('random_crop')
 walk_generator = os.walk(target_dir)
 root, directories, files = next(walk_generator)
@@ -304,7 +305,7 @@ for f in files:
             # model.load_weights(ckp_path)
             # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
             model.load_weights(Path(root).joinpath(Path(f).stem))
-            print('check point found.')
+            # print('check point found.')
         except:
             print('no check point found.')
             raise RuntimeError
