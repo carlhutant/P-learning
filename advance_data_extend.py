@@ -13,8 +13,10 @@ from scipy import signal
 dataset = 'AWA2'
 # datatype: img, tfrecord
 datatype = 'img'
-# data data_advance: color_diff_121, color_diff_121_3ch, none
-data_advance = 'color_diff_121'
+# data data_advance: color_diff_121, color_diff_121_3ch, color_diff_121_abs, none
+# color_diff_121: 0.00051614,  0.01895578, -0.00204118, -0.03210322, -0.00153458, -0.12204278
+# color_diff_121_abs: 42.57167483915786, 44.32660178095038, 41.716144938386016, 43.35167134089522, 41.97310964205989, 43.8454831598209
+data_advance = 'color_diff_121_abs'
 # data usage: train, val, test
 data_usage = 'val'
 
@@ -29,7 +31,7 @@ else:
     class_num = -1
     raise RuntimeError
 
-process_num = 32
+process_num = 64
 split_num = 15
 dataset_dir = configure.dataset_dir
 target_directory = Path('{}/{}/{}/none/{}/'.format(dataset_dir, dataset, datatype, data_usage))
@@ -54,6 +56,24 @@ def color_diff_121(array):
         feature = np.concatenate(
             (feature, horizontal_result[..., np.newaxis], vertical_result[..., np.newaxis]), axis=-1)
     return feature
+
+
+def color_diff_121_abs(array):
+    horizontal_filter = np.array([[1, 0, -1],
+                                  [2, 0, -2],
+                                  [1, 0, -1]], dtype="int")
+    vertical_filter = np.array([[1, 2, 1],
+                                [0, 0, 0],
+                                [-1, -2, -1]], dtype="int")
+    feature = np.empty(shape=array.shape[:-1] + (0,))
+    for RGB_index in range(3):
+        horizontal_result = signal.convolve2d(array[..., RGB_index], horizontal_filter, boundary='symm',
+                                              mode='same')
+        vertical_result = signal.convolve2d(array[..., RGB_index], vertical_filter, boundary='symm',
+                                            mode='same')
+        feature = np.concatenate(
+            (feature, horizontal_result[..., np.newaxis], vertical_result[..., np.newaxis]), axis=-1)
+    return np.absolute(feature)
 
 
 def np_instance_to_tf_example(np_shape, np_feature, np_label):

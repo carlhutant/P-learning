@@ -82,12 +82,10 @@ if GPU_memory_growth:
 
 if dataset == 'AWA2':
     class_num = 40
-    file_type = '.jpg'
     train_cardinality = 24264
     val_cardinality = 6070
 elif dataset == 'imagenet':
     class_num = 1000
-    file_type = '.JPEG'
     train_cardinality = 1281167
     val_cardinality = 50000
 else:
@@ -104,8 +102,7 @@ def img_generator(target_directory, shuffle, shuffle_every_epoch):
         walk_generator2 = os.walk(root + d)
         flies_root, _, files = next(walk_generator2)
         for file in files:
-            if file.endswith(file_type):
-                instance_list.append({'path': os.path.join(flies_root, file), 'label': class_count})
+            instance_list.append({'path': os.path.join(flies_root, file), 'label': class_count})
         class_count = class_count + 1
     file_num = len(instance_list)
     if shuffle or shuffle_every_epoch:
@@ -114,7 +111,10 @@ def img_generator(target_directory, shuffle, shuffle_every_epoch):
     while True:
         for i in range(file_num):
             instance = instance_list[i]
-            img = cv2.imread(instance['path'])
+            if datatype == 'img':
+                img = cv2.imread(instance['path'])
+            elif datatype == 'npy':
+                img = np.load(instance['path'])
             if color_mode == "RGB":
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             img = np.array(img, dtype=np.float32)
