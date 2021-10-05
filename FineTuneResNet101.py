@@ -24,9 +24,9 @@ from tensorflow.keras.optimizers import SGD
 # Dataset config #
 dataset = 'AWA2'  # AWA2, imagenet
 datatype = 'img'  # img, tfrecord
-data_advance = 'none'   # color_diff_121, none
-preprocess = 'caffe'  # caffe, none
-color_mode = "BGR"  # BGR, RGB, none
+data_advance = 'color_diff_121_abs'   # color_diff_121, color_diff_121_abs, none
+preprocess = 'color_diff_121_abs_caffe'  # caffe, color_diff_121_abs_caffe, none
+color_mode = "RGB"  # BGR, RGB, none
 ########################################
 # Shuffle set #
 random_seed = 486
@@ -115,6 +115,7 @@ def img_generator(target_directory, shuffle, shuffle_every_epoch):
                 img = cv2.imread(instance['path'])
             elif datatype == 'npy':
                 img = np.load(instance['path'])
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             if color_mode == "RGB":
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             img = np.array(img, dtype=np.float32)
@@ -204,6 +205,13 @@ def crop_generator(target_directory, batch_size, final_batch_opt, crop_type, cro
                         crop = crop - np.array([123.68, 116.779, 103.939], dtype=np.float32)
                     else:
                         raise RuntimeError
+                elif preprocess == 'color_diff_121_abs_caffe':
+                    if color_mode == 'RGB':
+                        crop = crop - np.array([[[42.57, 44.33, 41.72, 43.35, 41.97, 43.85]]], dtype=np.float32)
+                    else:
+                        raise RuntimeError
+                else:
+                    raise RuntimeError
                 crop = crop[np.newaxis, ...]
                 batch_feature = np.concatenate((batch_feature, crop), 0)
                 batch_label = np.concatenate((batch_label, label), 0)
@@ -303,15 +311,15 @@ STEP_SIZE_TRAIN = math.ceil(train_cardinality / train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality / val_batch_size)
 
 epochs = 2000
-try:
-    # model = tf.keras.models.load_model(ckp_path)
-    # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
-    # model.load_weights(ckp_path)
-    # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
-    model.load_weights('/media/uscc/SSD/NE6091069/p_learning/model/AWA2/img/none/random_crop/ckpt-epoch0087_loss-0.1589_accuracy-0.9526_val_loss-181.5382_val_accuracy-0.6387')
-    print('check point found.')
-except:
-    print('no check point found.')
+# try:
+#     # model = tf.keras.models.load_model(ckp_path)
+#     # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
+#     # model.load_weights(ckp_path)
+#     # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
+#     model.load_weights('/media/uscc/SSD/NE6091069/p_learning/model/AWA2/img/none/random_crop/ckpt-epoch0087_loss-0.1589_accuracy-0.9526_val_loss-181.5382_val_accuracy-0.6387')
+#     print('check point found.')
+# except:
+#     print('no check point found.')
 
 model.compile(optimizer=SGD(learning_rate=0.01, decay=1e-4, momentum=0.9, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])

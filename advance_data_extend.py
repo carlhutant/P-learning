@@ -31,7 +31,7 @@ else:
     class_num = -1
     raise RuntimeError
 
-process_num = 64
+process_num = 32
 split_num = 15
 dataset_dir = configure.dataset_dir
 target_directory = Path('{}/{}/{}/none/{}/'.format(dataset_dir, dataset, datatype, data_usage))
