@@ -79,7 +79,6 @@ if GPU_memory_growth:
     for gpu in gpus:
         tf.config.experimental.set_memory_growth(gpu, True)
 
-
 if dataset == 'AWA2':
     class_num = 40
     train_cardinality = 24264
@@ -88,6 +87,15 @@ elif dataset == 'imagenet':
     class_num = 1000
     train_cardinality = 1281167
     val_cardinality = 50000
+else:
+    raise RuntimeError
+
+if data_advance == 'none':
+    channel = 3
+elif data_advance == 'color_diff_121':
+    channel = 6
+elif data_advance == 'color_diff_121_abs':
+    channel = 6
 else:
     raise RuntimeError
 
@@ -113,10 +121,12 @@ def img_generator(target_directory, shuffle, shuffle_every_epoch):
             instance = instance_list[i]
             if datatype == 'img':
                 img = cv2.imread(instance['path'])
+                if color_mode == "RGB":
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             elif datatype == 'npy':
                 img = np.load(instance['path'])
-            if color_mode == "RGB":
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                if color_mode == "BGR":
+                    img = img[..., [4, 5, 2, 3, 0, 1]]
             img = np.array(img, dtype=np.float32)
             label = np.zeros(class_num, dtype=np.float32)
             label[instance['label']] = 1
@@ -141,7 +151,7 @@ def crop_generator(target_directory, batch_size, final_batch_opt, crop_type, cro
     random.seed(random_seed)
     file_remain_num = file_num
     while True:
-        batch_feature = np.empty([0, crop_h, crop_w, 3], dtype=np.float32)
+        batch_feature = np.empty([0, crop_h, crop_w, channel], dtype=np.float32)
         batch_label = np.empty([0, class_num], dtype=np.float32)
         if final_batch_opt == 'complete':
             batch_data_num = min(batch_size, file_remain_num)
@@ -174,10 +184,10 @@ def crop_generator(target_directory, batch_size, final_batch_opt, crop_type, cro
                 y0_list.append(0)
                 x0_list.append(0)
             elif crop_type == 'center':
-                center_y = math.ceil(new_height/2)
-                center_x = math.ceil(new_width/2)
-                y0_list.append(center_y - math.ceil(crop_h/2) + 1)
-                x0_list.append(center_x - math.ceil(crop_w/2) + 1)
+                center_y = math.ceil(new_height / 2)
+                center_x = math.ceil(new_width / 2)
+                y0_list.append(center_y - math.ceil(crop_h / 2) + 1)
+                x0_list.append(center_x - math.ceil(crop_w / 2) + 1)
             elif crop_type == 'random':  # 先不處理 crop 大於原圖的情況
                 y0_list.append(random.randint(0, new_height - crop_h))
                 x0_list.append(random.randint(0, new_width - crop_w))
@@ -192,7 +202,7 @@ def crop_generator(target_directory, batch_size, final_batch_opt, crop_type, cro
                 raise RuntimeError
             crop_list = []
             for y0, x0 in zip(y0_list, x0_list):
-                crop = img[y0:y0+crop_h, x0:x0+crop_w, :]
+                crop = img[y0:y0 + crop_h, x0:x0 + crop_w, :]
                 crop_list.append(crop)
                 if crop_type == 'ten_crop':
                     crop_list.append(crop[:, ::-1, :])
@@ -204,6 +214,13 @@ def crop_generator(target_directory, batch_size, final_batch_opt, crop_type, cro
                         crop = crop - np.array([123.68, 116.779, 103.939], dtype=np.float32)
                     else:
                         raise RuntimeError
+                elif preprocess == 'color_diff_121_abs_caffe':
+                    if color_mode == 'RGB':
+                        crop = crop - np.array([[[42.57, 44.33, 41.72, 43.35, 41.97, 43.85]]], dtype=np.float32)
+                    else:
+                        raise RuntimeError
+                else:
+                    raise RuntimeError
                 crop = crop[np.newaxis, ...]
                 batch_feature = np.concatenate((batch_feature, crop), 0)
                 batch_label = np.concatenate((batch_label, label), 0)
@@ -271,7 +288,7 @@ if multi_GPU:
         # Construction
         model = Model(inputs=base_model.input, outputs=predictions)
 else:
-    base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 3))
+    base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 6))
     # add a global average pooling layer
     x = GlobalAveragePooling2D()(base_model.output)
     # # add a dense
@@ -287,11 +304,11 @@ else:
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1)
 model_checkpoint = ModelCheckpoint(ckpt_dir + 'ckpt-epoch{epoch:04d}'
-                                            + '_loss-{loss:.4f}'
-                                            + '_accuracy-{accuracy:.4f}'
-                                            + '_val_loss-{val_loss:.4f}'
-                                            + '_val_accuracy-{val_accuracy:.4f}',
-                                   save_weights_only=False,
+                                   + '_loss-{loss:.4f}'
+                                   + '_accuracy-{accuracy:.4f}'
+                                   + '_val_loss-{val_loss:.4f}'
+                                   + '_val_accuracy-{val_accuracy:.4f}',
+                                   save_weights_only=True,
                                    save_freq='epoch',
                                    verbose=0)
 reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
@@ -305,26 +322,26 @@ reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
 STEP_SIZE_TRAIN = math.ceil(train_cardinality / train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality / val_batch_size)
 
-epochs = 1
-try:
-    # model = tf.keras.models.load_model(ckp_path)
-    # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
-    # model.load_weights(ckp_path)
-    # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
-    model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061\\variables\\variables')
-    print('check point found.')
-except:
-    print('no check point found.')
+epochs = 2000
+# try:
+#     # model = tf.keras.models.load_model(ckp_path)
+#     # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
+#     # model.load_weights(ckp_path)
+#     # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
+#     model.load_weights('/media/uscc/SSD/NE6091069/p_learning/model/AWA2/img/none/random_crop/ckpt-epoch0087_loss-0.1589_accuracy-0.9526_val_loss-181.5382_val_accuracy-0.6387')
+#     print('check point found.')
+# except:
+#     print('no check point found.')
 
 model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
-# model.fit_generator(train_data_gen,
-#                     steps_per_epoch=STEP_SIZE_TRAIN,
-#                     epochs=epochs,
-#                     validation_data=val_data_gen,
-#                     validation_steps=STEP_SIZE_VALID,
-#                     # callbacks=[model_checkpoint]
-#                     )
+model.fit_generator(train_data_gen,
+                    steps_per_epoch=STEP_SIZE_TRAIN,
+                    epochs=epochs,
+                    validation_data=val_data_gen,
+                    validation_steps=STEP_SIZE_VALID,
+                    callbacks=[model_checkpoint]
+                    )
 # model.save(model_save_path)
 # epochs = 10
 #
@@ -355,15 +372,15 @@ model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nestero
 # Evaluate
 # score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
 # print(score)
-total_count = 0
-positive_count = 0
-for i in range(STEP_SIZE_VALID):
-    print(i)
-    x = next(val_data_gen)
-    y = model.predict(x[0])
-    y = y.sum(axis=0)
-    maxarg = y.argmax(axis=0)
-    if x[1][0][maxarg] == 1:
-        positive_count = positive_count + 1
-    total_count = total_count + 1
-print(positive_count/total_count)
+# total_count = 0
+# positive_count = 0
+# for i in range(STEP_SIZE_VALID):
+#     print(i)
+#     x = next(val_data_gen)
+#     y = model.predict(x[0])
+#     y = y.sum(axis=0)
+#     maxarg = y.argmax(axis=0)
+#     if x[1][0][maxarg] == 1:
+#         positive_count = positive_count + 1
+#     total_count = total_count + 1
+# print(positive_count/total_count)
