@@ -24,7 +24,7 @@ from tensorflow.keras.optimizers import SGD
 # Dataset config #
 dataset = 'AWA2'  # AWA2, imagenet
 datatype = 'img'  # img, tfrecord
-data_advance = 'none'   # color_diff_121, none
+data_advance = 'none'   # color_diff_121, none, color_diff_121_abs
 preprocess = 'caffe'  # caffe, none
 color_mode = "BGR"  # BGR, RGB, none
 ########################################
@@ -38,7 +38,7 @@ val_shuffle_every_epoch = False
 # Batch set #
 train_batch_size = 16
 train_final_batch_opt = 'complete'
-val_batch_size = 1
+val_batch_size = 16
 val_final_batch_opt = 'complete'
 ########################################
 # Image set #
@@ -49,7 +49,7 @@ train_IMG_SHAPE = 224
 
 val_horizontal_flip = False
 val_resize_short_edge_max = 480
-val_resize_short_edge_min = 480
+val_resize_short_edge_min = 256
 val_IMG_SHAPE = train_IMG_SHAPE
 ########################################
 # Crop set #
@@ -57,7 +57,7 @@ train_crop_type = 'random'
 train_crop_w = train_IMG_SHAPE
 train_crop_h = train_IMG_SHAPE
 
-val_crop_type = 'ten_crop'
+val_crop_type = 'random'
 val_crop_w = train_crop_w
 val_crop_h = train_crop_h
 ########################################
@@ -242,8 +242,11 @@ val_data_gen = crop_generator(
 )
 next(val_data_gen)
 
+while True:
+    a = next(train_data_gen)
+    print('a')
 # test final_batch_opt
-a = next(train_data_gen)
+# a = next(train_data_gen)
 # file_remain_num = train_cardinality-batch_size
 # batch_data_num = min(batch_size, file_remain_num)
 # count = 0
