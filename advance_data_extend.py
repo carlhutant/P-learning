@@ -14,8 +14,8 @@ from scipy import signal
 # color_diff_121_abs:
 #   42.57167483915786, 44.32660178095038, 41.716144938386016, 43.35167134089522, 41.97310964205989, 43.8454831598209
 multiprocess = False
-process_num = 4
-split_instance_num = 1
+process_num = 1
+split_instance_num = 10
 dataset = 'AWA2'
 result_datatype = 'tfrecord'    # result_datatype: img, tfrecord, npy
 data_advance = 'none'   # data data_advance: color_diff_121, color_diff_121_3ch, color_diff_121_abs, none
