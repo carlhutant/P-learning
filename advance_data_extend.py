@@ -8,17 +8,24 @@ import multiprocessing
 from pathlib import Path
 from scipy import signal
 
-# Import data
-# change the dataset here###
+
+# color_diff_121:
+#   0.00051614,  0.01895578, -0.00204118, -0.03210322, -0.00153458, -0.12204278
+# color_diff_121_abs:
+#   42.57167483915786, 44.32660178095038, 41.716144938386016, 43.35167134089522, 41.97310964205989, 43.8454831598209
+multiprocess = False
+process_num = 1
+split_instance_num = 10
 dataset = 'AWA2'
-# datatype: img, tfrecord
-datatype = 'img'
-# data data_advance: color_diff_121, color_diff_121_3ch, color_diff_121_abs, none
-# color_diff_121: 0.00051614,  0.01895578, -0.00204118, -0.03210322, -0.00153458, -0.12204278
-# color_diff_121_abs: 42.57167483915786, 44.32660178095038, 41.716144938386016, 43.35167134089522, 41.97310964205989, 43.8454831598209
-data_advance = 'color_diff_121_abs'
-# data usage: train, val, test
-data_usage = 'val'
+result_datatype = 'tfrecord'    # result_datatype: img, tfrecord, npy
+data_advance = 'none'   # data data_advance: color_diff_121, color_diff_121_3ch, color_diff_121_abs, none
+data_usage = 'train'  # data usage: train, val, test
+
+dataset_dir = configure.dataset_dir
+target_directory = Path('{}/{}/img/none/{}/'.format(dataset_dir, dataset, data_usage))
+result_directory = Path('{}/{}/{}/{}/'.format(dataset_dir, dataset, result_datatype, data_advance))
+if result_datatype != 'tfrecord':
+    result_directory = result_directory.joinpath(data_usage)
 
 if dataset == 'AWA2':
     file_type = '.jpg'
@@ -31,14 +38,6 @@ else:
     class_num = -1
     raise RuntimeError
 
-process_num = 32
-split_num = 15
-dataset_dir = configure.dataset_dir
-target_directory = Path('{}/{}/{}/none/{}/'.format(dataset_dir, dataset, datatype, data_usage))
-result_directory = Path('{}/{}/{}/{}/{}/'.format(dataset_dir, dataset, datatype, data_advance, data_usage))
-# result_format: none, img, tfrecord, npy
-result_format = 'npy'
-
 
 def color_diff_121(array):
     horizontal_filter = np.array([[1, 0, -1],
@@ -48,10 +47,10 @@ def color_diff_121(array):
                                 [0, 0, 0],
                                 [-1, -2, -1]], dtype="int")
     feature = np.empty(shape=array.shape[:-1] + (0,))
-    for RGB_index in range(3):
-        horizontal_result = signal.convolve2d(array[..., RGB_index], horizontal_filter, boundary='symm',
+    for BGR_index in range(3):
+        horizontal_result = signal.convolve2d(array[..., BGR_index], horizontal_filter, boundary='symm',
                                               mode='same')
-        vertical_result = signal.convolve2d(array[..., RGB_index], vertical_filter, boundary='symm',
+        vertical_result = signal.convolve2d(array[..., BGR_index], vertical_filter, boundary='symm',
                                             mode='same')
         feature = np.concatenate(
             (feature, horizontal_result[..., np.newaxis], vertical_result[..., np.newaxis]), axis=-1)
@@ -59,20 +58,7 @@ def color_diff_121(array):
 
 
 def color_diff_121_abs(array):
-    horizontal_filter = np.array([[1, 0, -1],
-                                  [2, 0, -2],
-                                  [1, 0, -1]], dtype="int")
-    vertical_filter = np.array([[1, 2, 1],
-                                [0, 0, 0],
-                                [-1, -2, -1]], dtype="int")
-    feature = np.empty(shape=array.shape[:-1] + (0,))
-    for RGB_index in range(3):
-        horizontal_result = signal.convolve2d(array[..., RGB_index], horizontal_filter, boundary='symm',
-                                              mode='same')
-        vertical_result = signal.convolve2d(array[..., RGB_index], vertical_filter, boundary='symm',
-                                            mode='same')
-        feature = np.concatenate(
-            (feature, horizontal_result[..., np.newaxis], vertical_result[..., np.newaxis]), axis=-1)
+    feature = color_diff_121(array)
     return np.absolute(feature)
 
 
@@ -105,7 +91,7 @@ def np_instance_to_tf_example(np_shape, np_feature, np_label):
 
 def file_load(instance):
     image = cv2.imread(str(instance['path']))
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     # cv2.imshow("image", image)
     # cv2.waitKey()
     label = np.zeros(class_num, dtype=np.float32)
@@ -114,43 +100,48 @@ def file_load(instance):
 
 
 def feature_processing(image):
-    # # custom edge
-    # # filter id 121
-    feature = color_diff_121(image)
+    feature = color_diff_121_abs(image)
     # feature = image[..., [0, 2, 1]]
+    # feature = image
     return feature
 
 
-def process_func(process_No, instance_list):
-    if result_format == 'tfrecord':
+def process_func(process_id, partial_instance_list):
+    if result_datatype == 'tfrecord':
         split_count = 0
         image_count = 0
         writer = tf.io.TFRecordWriter(
-            result_directory + data_usage + '.tfrecord-' + str(split_count * process_num + process_No).zfill(5))
+            str(result_directory.joinpath(
+                data_usage + '.tfrecord-' + str(split_count * process_num + process_id).zfill(5))))
 
-    for instance in instance_list[process_No::max(process_num, 1)]:
+    for instance in partial_instance_list:
         print(instance['path'])
         image, label = file_load(instance)
         shape = np.array(image.shape, dtype=np.int64)
         feature = feature_processing(image)
 
-        if result_format == 'tfrecord':
+        if result_datatype == 'tfrecord':
             serialized_example = np_instance_to_tf_example(shape, feature, label)
             writer.write(serialized_example)
             image_count = image_count + 1
-            if process_No == 0:
-                print(str(image_count) + '/' + str(len(instance_list)))
-            if image_count % split_num == 0:
+            # if process_id == 0:
+            #     print(str(image_count) + '/' + str(len(partial_instance_list)))
+            if image_count % split_instance_num == 0:
                 writer.close()
                 split_count = split_count + 1
                 # print(split_count)
                 writer = tf.io.TFRecordWriter(
-                    result_directory + data_usage + '.tfrecord-' + str(split_count * process_num + process_No).zfill(5))
-        elif result_format == 'npy':
-            np.save(Path(result_directory).joinpath(Path(instance['path']).parent.stem).joinpath(Path(instance['path']).stem), feature)
-        elif result_format == 'img':
-            a = 0
-    if result_format == 'tfrecord':
+                    str(result_directory.joinpath(
+                        data_usage + '.tfrecord-' + str(split_count * process_num + process_id).zfill(5))))
+        elif result_datatype == 'npy':
+            np.save(str(Path(result_directory).joinpath(Path(instance['path']).parent.stem)
+                        .joinpath(Path(instance['path']).stem)), feature)
+        elif result_datatype == 'img':
+            cv2.imwrite(str(Path(result_directory).joinpath(Path(instance['path']).parent.stem)
+                        .joinpath(str(Path(instance['path']).name))), feature)
+        else:
+            raise RuntimeError
+    if result_datatype == 'tfrecord':
         writer.close()
     return
 
@@ -172,23 +163,28 @@ if __name__ == "__main__":
     file_num = len(instance_list)
 
     random.seed(486)
-    random.shuffle(instance_list)
+    if result_datatype == 'tfrecord':
+        random.shuffle(instance_list)
 
+    if not result_datatype == 'tfrecord':
+        if not Path.is_dir(Path(result_directory).parent.parent):
+            Path.mkdir(Path(result_directory).parent.parent)
     if not Path.is_dir(Path(result_directory).parent):
         Path.mkdir(Path(result_directory).parent)
     if not Path.is_dir(Path(result_directory)):
         Path.mkdir(Path(result_directory))
-    if not result_format == 'tfrecord':
+    if not result_datatype == 'tfrecord':
         for d in directory:
             if not Path.is_dir(Path(result_directory).joinpath(d)):
                 Path.mkdir(Path(result_directory).joinpath(d))
 
-    if process_num == 0:
-        process_func(0)
+    if not multiprocess:
+        process_num = 1
+        process_func(0, instance_list)
     else:
         processes = []
         for i in range(process_num):
-            processes.append(multiprocessing.Process(target=process_func, args=(i, instance_list)))
+            processes.append(multiprocessing.Process(target=process_func, args=(i, instance_list[i::process_num])))
             processes[i].start()
         for i in range(process_num):
             processes[i].join()
