@@ -64,7 +64,7 @@ val_crop_h = train_crop_h
 ########################################
 # GPU set #
 multi_GPU = False
-GPU_memory_growth = False
+GPU_memory_growth = True
 ########################################
 # Directory set
 dataset_dir = configure.dataset_dir
@@ -296,8 +296,8 @@ else:
     # Construction
     model = Model(inputs=base_model.input, outputs=predictions)
 
-keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
-                       rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
+# keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
+#                        rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1)
@@ -321,15 +321,16 @@ STEP_SIZE_TRAIN = math.ceil(train_cardinality / train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality / val_batch_size)
 
 epochs = 2000
-# try:
+try:
 #     # model = tf.keras.models.load_model(ckp_path)
 #     # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
 #     # model.load_weights(ckp_path)
 #     # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
-#     model.load_weights('/media/uscc/SSD/NE6091069/p_learning/model/AWA2/img/none/random_crop/ckpt-epoch0087_loss-0.1589_accuracy-0.9526_val_loss-181.5382_val_accuracy-0.6387')
+    model.load_weights('/media/uscc/SSD/NE6091069/p_learning/model/AWA2/npy/color_diff_121_abs/random_crop/1_4/ckpt-epoch0004_loss-3.3141_accuracy-0.1106_val_loss-3.3365_val_accuracy-0.0974')
 #     print('check point found.')
-# except:
-#     print('no check point found.')
+except:
+    print('no check point found.')
+    raise RuntimeError
 
 model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
