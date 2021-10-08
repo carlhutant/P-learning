@@ -8,17 +8,48 @@ import multiprocessing
 from pathlib import Path
 from scipy import signal
 
-
 # color_diff_121:
 #   0.00051614,  0.01895578, -0.00204118, -0.03210322, -0.00153458, -0.12204278
 # color_diff_121_abs:
 #   42.57167483915786, 44.32660178095038, 41.716144938386016, 43.35167134089522, 41.97310964205989, 43.8454831598209
-multiprocess = False
-process_num = 1
+
+# img = np.load('E:\\Dataset\\test\\antelope_10007.npy')
+# a = img[..., 0]
+# a = a[..., np.newaxis]
+# b = np.concatenate((a, a, a), axis=-1)
+# b = b // 3
+# b = np.array(b, dtype=np.uint8)
+# cv2.imshow('0', b)
+#
+# a = img[..., 1]
+# a = a[..., np.newaxis]
+# b = np.concatenate((a, a, a), axis=-1)
+# b = b // 3
+# b = np.array(b, dtype=np.uint8)
+# cv2.imshow('1', b)
+
+# a = img[..., 4]
+# a = a[..., np.newaxis]
+# b = np.concatenate((a, a, a), axis=-1)
+# b = b // 3
+# b = np.array(b, dtype=np.uint8)
+# cv2.imshow('2', b)
+
+# a = img[..., 3]
+# a = a[..., np.newaxis]
+# b = np.concatenate((a, a, a), axis=-1)
+# b = b // 3
+# b = np.array(b, dtype=np.uint8)
+# cv2.imshow('3', b)
+
+# cv2.waitKey()
+
+multiprocess = True
+process_num = 4
 split_instance_num = 10
 dataset = 'AWA2'
-result_datatype = 'tfrecord'    # result_datatype: img, tfrecord, npy
-data_advance = 'none'   # data data_advance: color_diff_121, color_diff_121_3ch, color_diff_121_abs, none
+result_datatype = 'img'  # result_datatype: img, tfrecord, npy
+data_advance = 'color_sw_GBR'  # data data_advance: color_diff_121, color_diff_121_3ch, color_diff_121_abs, none, color_sw_GBR
 data_usage = 'train'  # data usage: train, val, test
 
 dataset_dir = configure.dataset_dir
@@ -100,8 +131,8 @@ def file_load(instance):
 
 
 def feature_processing(image):
-    feature = color_diff_121_abs(image)
-    # feature = image[..., [0, 2, 1]]
+    # feature = color_diff_121_abs(image)
+    feature = image[..., [1, 0, 2]]
     # feature = image
     return feature
 
@@ -138,7 +169,7 @@ def process_func(process_id, partial_instance_list):
                         .joinpath(Path(instance['path']).stem)), feature)
         elif result_datatype == 'img':
             cv2.imwrite(str(Path(result_directory).joinpath(Path(instance['path']).parent.stem)
-                        .joinpath(str(Path(instance['path']).name))), feature)
+                            .joinpath(str(Path(instance['path']).name))), feature)
         else:
             raise RuntimeError
     if result_datatype == 'tfrecord':

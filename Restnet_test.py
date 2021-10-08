@@ -30,13 +30,13 @@ val_data_gen = crop_generator(
 )
 next(val_data_gen)
 
-# # test generator speed
-# count = 0
-# print('Start testing generator speed')
-# while True:
-#     a = next(val_data_gen)
-#     count = count + 1
-#     print(count)
+# test generator speed
+count = 0
+print('Start testing generator speed')
+while True:
+    a = next(val_data_gen)
+    count = count + 1
+    print(count)
 
 if GPU_memory_growth:
     gpus = tf.config.experimental.list_physical_devices('GPU')
