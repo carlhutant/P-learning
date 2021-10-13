@@ -44,12 +44,12 @@ from scipy import signal
 
 # cv2.waitKey()
 
-multiprocess = True
-process_num = 4
-split_instance_num = 10
+multiprocess = False
+process_num = 1
+split_instance_num = 20
 dataset = 'AWA2'
-result_datatype = 'img'  # result_datatype: img, tfrecord, npy
-data_advance = 'color_sw_GBR'  # data data_advance: color_diff_121, color_diff_121_3ch, color_diff_121_abs, none, color_sw_GBR
+result_datatype = 'tfrecord'  # img, tfrecord, npy
+data_advance = 'color_diff_121_abs'  # data data_advance: color_diff_121, color_diff_121_3ch, color_diff_121_abs, none, color_sw_GBR
 data_usage = 'train'  # data usage: train, val, test
 
 dataset_dir = configure.dataset_dir
