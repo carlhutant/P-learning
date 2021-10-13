@@ -138,7 +138,7 @@ model.fit_generator(train_data_gen,
                     epochs=epochs,
                     validation_data=val_data_gen,
                     validation_steps=STEP_SIZE_VALID,
-                    # callbacks=[model_checkpoint]
+                    callbacks=[model_checkpoint]
                     )
 # model.save(model_save_path)
 # epochs = 10

@@ -13,43 +13,12 @@ from scipy import signal
 # color_diff_121_abs:
 #   42.57167483915786, 44.32660178095038, 41.716144938386016, 43.35167134089522, 41.97310964205989, 43.8454831598209
 
-# img = np.load('E:\\Dataset\\test\\antelope_10007.npy')
-# a = img[..., 0]
-# a = a[..., np.newaxis]
-# b = np.concatenate((a, a, a), axis=-1)
-# b = b // 3
-# b = np.array(b, dtype=np.uint8)
-# cv2.imshow('0', b)
-#
-# a = img[..., 1]
-# a = a[..., np.newaxis]
-# b = np.concatenate((a, a, a), axis=-1)
-# b = b // 3
-# b = np.array(b, dtype=np.uint8)
-# cv2.imshow('1', b)
-
-# a = img[..., 4]
-# a = a[..., np.newaxis]
-# b = np.concatenate((a, a, a), axis=-1)
-# b = b // 3
-# b = np.array(b, dtype=np.uint8)
-# cv2.imshow('2', b)
-
-# a = img[..., 3]
-# a = a[..., np.newaxis]
-# b = np.concatenate((a, a, a), axis=-1)
-# b = b // 3
-# b = np.array(b, dtype=np.uint8)
-# cv2.imshow('3', b)
-
-# cv2.waitKey()
-
-multiprocess = False
-process_num = 1
+multiprocess = True
+process_num = 64
 split_instance_num = 20
 dataset = 'AWA2'
-result_datatype = 'tfrecord'  # img, tfrecord, npy
-data_advance = 'color_diff_121_abs'  # data data_advance: color_diff_121, color_diff_121_3ch, color_diff_121_abs, none, color_sw_GBR
+result_datatype = 'npy'  # img, tfrecord, npy
+data_advance = 'color_diff_121_abs'  # color_diff_121, color_diff_121_abs_3ch, color_diff_121_abs, none, color_sw_GBR
 data_usage = 'train'  # data usage: train, val, test
 
 dataset_dir = configure.dataset_dir
@@ -88,11 +57,6 @@ def color_diff_121(array):
     return feature
 
 
-def color_diff_121_abs(array):
-    feature = color_diff_121(array)
-    return np.absolute(feature)
-
-
 def np_instance_to_tf_example(np_shape, np_feature, np_label):
     # confirm data format
     np_shape = np_shape.reshape(-1)
@@ -122,7 +86,6 @@ def np_instance_to_tf_example(np_shape, np_feature, np_label):
 
 def file_load(instance):
     image = cv2.imread(str(instance['path']))
-    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     # cv2.imshow("image", image)
     # cv2.waitKey()
     label = np.zeros(class_num, dtype=np.float32)
@@ -131,9 +94,12 @@ def file_load(instance):
 
 
 def feature_processing(image):
-    # feature = color_diff_121_abs(image)
-    feature = image[..., [1, 0, 2]]
-    # feature = image
+    if data_advance == 'none':
+        feature = image
+    elif data_advance == 'color_diff_121_abs':
+        feature = np.absolute(color_diff_121(image))
+    else:
+        raise RuntimeError
     return feature
 
 
@@ -144,9 +110,12 @@ def process_func(process_id, partial_instance_list):
         writer = tf.io.TFRecordWriter(
             str(result_directory.joinpath(
                 data_usage + '.tfrecord-' + str(split_count * process_num + process_id).zfill(5))))
-
+    count = 0
     for instance in partial_instance_list:
-        print(instance['path'])
+        if process_id == 0:
+            count = count + 1
+            # print(instance['path'])
+            print('{}/{}'.format(count, len(partial_instance_list)))
         image, label = file_load(instance)
         shape = np.array(image.shape, dtype=np.int64)
         feature = feature_processing(image)
@@ -220,115 +189,3 @@ if __name__ == "__main__":
         for i in range(process_num):
             processes[i].join()
         print('done')
-
-    # # special edge
-    # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # blurred = cv2.GaussianBlur(gray, (15, 15), 0)
-    # # cv2.imshow("blurred", blurred)
-    # # 兩個 threshold, 微分高於 upper 為邊界, 高於 lower 周圍有高於 upper 為邊界
-    # canny = cv2.Canny(blurred, 20, 40)
-    # result = np.ones(canny.shape, dtype="uint8")*255-canny
-    # # cv2.imshow("canny", canny)
-    # # cv2.waitKey(0)
-    # result = result[:, :, np.newaxis]
-    # result = np.array(result, dtype="uint8")
-    # result_n = np.ones(result.shape, dtype="uint8") * 255 - result
-    # one = np.ones(result.shape, dtype="uint8") * 255
-    # zero = np.zeros(result.shape, dtype="uint8")
-    # result = np.concatenate((result, result_n, result_n), axis=-1)
-    # origin_file_name = os.path.splitext(os.path.join(rr, file))
-    #
-    # cv2.imwrite(origin_file_name[0] + origin_file_name[1], result)
-
-    # # edge & negative edge
-    # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # blurred = cv2.GaussianBlur(gray, (15, 15), 0)
-    # # cv2.imshow("blurred", blurred)
-    # # 兩個 threshold, 微分高於 upper 為邊界, 高於 lower 周圍有高於 upper 為邊界
-    # canny = cv2.Canny(blurred, 20, 40)
-    # # result = np.ones(canny.shape, dtype="uint8")*255-canny
-    # # cv2.imshow("canny", canny)
-    # # cv2.waitKey(0)
-    # canny = canny[:, :, np.newaxis]
-    # result = np.concatenate((canny, canny, canny), axis=-1)
-    # origin_file_name = os.path.splitext(os.path.join(rr, file))
-    #
-    # cv2.imwrite(origin_file_name[0] + origin_file_name[1], canny)
-    # # cv2.imwrite(origin_file_name[0] + '_edge_negative_extend' + origin_file_name[1], result)
-    # image = cv2.imread(os.path.join(r, file))
-    #     # cv2.imshow("image", image)
-    #     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    #     blurred = cv2.GaussianBlur(gray, (15, 15), 0)
-    #     # cv2.imshow("blurred", blurred)
-    #     # 兩個 threshold, 微分高於 upper 為邊界, 高於 lower 周圍有高於 upper 為邊界
-    #     canny = cv2.Canny(blurred, 20, 40)
-    #     # cv2.imshow("canny", canny)
-    #     # cv2.waitKey(0)
-    #     canny = canny[:, :, np.newaxis]
-    #     result = np.concatenate((canny, canny, canny), axis=-1)
-    #     origin_file_name = os.path.splitext(os.path.join(r, file))
-    #     cv2.imwrite(origin_file_name[0] + '_edge_extend' + origin_file_name[1], result)
-    #
-    #     image_split = np.split(image, 3, axis=-1)
-    #     reorder_021 = np.concatenate((image_split[0], image_split[2], image_split[1]), -1)
-    #     reorder_102 = np.concatenate((image_split[1], image_split[0], image_split[2]), -1)
-    #     reorder_120 = np.concatenate((image_split[1], image_split[2], image_split[0]), -1)
-    #     reorder_201 = np.concatenate((image_split[2], image_split[0], image_split[1]), -1)
-    #     reorder_210 = np.concatenate((image_split[2], image_split[1], image_split[0]), -1)
-    #     # cv2.imshow("reorder_012", reorder_012)
-    #     # cv2.imshow("reorder_102", reorder_102)
-    #     # cv2.imshow("reorder_120", reorder_120)
-    #     # cv2.imshow("reorder_201", reorder_201)
-    #     # cv2.imshow("reorder_210", reorder_210)
-    #     negative_012 = (np.ones(image.shape, dtype="uint8") * 255) - image
-    #     negative_021 = (np.ones(image.shape, dtype="uint8") * 255) - reorder_021
-    #     negative_102 = (np.ones(image.shape, dtype="uint8") * 255) - reorder_102
-    #     negative_120 = (np.ones(image.shape, dtype="uint8") * 255) - reorder_120
-    #     negative_201 = (np.ones(image.shape, dtype="uint8") * 255) - reorder_201
-    #     negative_210 = (np.ones(image.shape, dtype="uint8") * 255) - reorder_210
-    #     # cv2.imshow("negative_012", negative_012)
-    #     # cv2.imshow("negative_021", negative_021)
-    #     # cv2.imshow("negative_102", negative_102)
-    #     # cv2.imshow("negative_120", negative_120)
-    #     # cv2.imshow("negative_201", negative_201)
-    #     # cv2.imshow("negative_210", negative_210)
-    #     # cv2.waitKey(0)
-    #     origin_file_name = os.path.splitext(os.path.join(r, file))
-    #     cv2.imwrite(origin_file_name[0] + '_reorder_021_extend' + origin_file_name[1], reorder_021)
-    #     cv2.imwrite(origin_file_name[0] + '_reorder_102_extend' + origin_file_name[1], reorder_102)
-    #     cv2.imwrite(origin_file_name[0] + '_reorder_120_extend' + origin_file_name[1], reorder_120)
-    #     cv2.imwrite(origin_file_name[0] + '_reorder_201_extend' + origin_file_name[1], reorder_201)
-    #     cv2.imwrite(origin_file_name[0] + '_reorder_210_extend' + origin_file_name[1], reorder_210)
-    #     cv2.imwrite(origin_file_name[0] + '_negative_012_extend' + origin_file_name[1], negative_012)
-    #     cv2.imwrite(origin_file_name[0] + '_negative_021_extend' + origin_file_name[1], negative_021)
-    #     cv2.imwrite(origin_file_name[0] + '_negative_102_extend' + origin_file_name[1], negative_102)
-    #     cv2.imwrite(origin_file_name[0] + '_negative_120_extend' + origin_file_name[1], negative_120)
-    #     cv2.imwrite(origin_file_name[0] + '_negative_201_extend' + origin_file_name[1], negative_201)
-    #     cv2.imwrite(origin_file_name[0] + '_negative_210_extend' + origin_file_name[1], negative_210)
-
-    # # edge & negative edge
-    # image = cv2.imread(os.path.join(r, file))
-    # # cv2.imshow("image", image)
-    # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # # blurred = cv2.GaussianBlur(gray, (15, 15), 0)
-    # # cv2.imshow("blurred", blurred)
-    # # 兩個 threshold, 微分高於 upper 為邊界, 高於 lower 周圍有高於 upper 為邊界
-    # canny = cv2.Canny(gray, 20, 40)
-    # result = np.ones(canny.shape, dtype="uint8")*255-canny
-    # # cv2.imshow("canny", canny)
-    # # cv2.waitKey(0)
-    # result = result[:, :, np.newaxis]
-    # result = np.concatenate((result, result, result), axis=-1)
-    # origin_file_name = os.path.splitext(os.path.join(r, file))
-    #
-    # # cv2.imwrite(origin_file_name[0] + '_edge_extend' + origin_file_name[1], canny)
-    # # cv2.imwrite(origin_file_name[0] + '_edge_negative_extend' + origin_file_name[1], result)
-
-    # # edge to negative edge
-    # if os.path.splitext(file)[0].endswith("_edge_extend"):
-    #     image = cv2.imread(os.path.join(r, file))
-    #     result = np.ones(image.shape, dtype="uint8")*255-image
-    #     result[..., 0] = np.ones(image[..., 0].shape, dtype="uint8")*255
-    #     result[..., 1] = np.zeros(image[..., 1].shape, dtype="uint8")
-    #     origin_file_name = os.path.splitext(os.path.join(r, file))
-    #     cv2.imwrite(origin_file_name[0] + '_edge_negative_extend' + origin_file_name[1], result)

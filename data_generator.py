@@ -27,15 +27,12 @@ def load_generator(target_directory, shuffle, shuffle_every_epoch):
             instance = instance_list[i]
             if datatype == 'img':
                 img = cv2.imread(instance['path'])
-                if color_mode == "RGB":
-                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             elif datatype == 'npy':
                 img = np.load(instance['path'])
-                if color_mode == "BGR":
-                    img = img[..., [4, 5, 2, 3, 0, 1]]
             else:
                 raise RuntimeError
             img = np.array(img, dtype=np.float32)
+
             label = np.zeros(class_num, dtype=np.float32)
             label[instance['label']] = 1
             yield img, label
@@ -53,8 +50,6 @@ def crop_generator(target_directory, batch_size, final_batch_opt, crop_type, cro
         raise RuntimeError
     if dir_num != class_num:
         raise RuntimeError
-    # if crop_type == 'ten_crop' and batch_size != 1:
-    #     raise RuntimeError
     yield
     random.seed(random_seed)
     file_remain_num = file_num
@@ -116,19 +111,18 @@ def crop_generator(target_directory, batch_size, final_batch_opt, crop_type, cro
                     crop_list.append(crop[:, ::-1, :])
             for crop in crop_list:
                 if preprocess == 'caffe':
-                    if color_mode == 'BGR':
-                        crop = crop - np.array([[[103.939, 116.779, 123.68]]], dtype=np.float32)
-                    elif color_mode == 'RGB':
-                        crop = crop - np.array([123.68, 116.779, 103.939], dtype=np.float32)
-                    else:
-                        raise RuntimeError
-                elif preprocess == 'color_diff_121_abs_caffe':
-                    if color_mode == 'RGB':
-                        crop = crop - np.array([[[42.57, 44.33, 41.72, 43.35, 41.97, 43.85]]], dtype=np.float32)
-                    else:
-                        raise RuntimeError
+                    crop = crop - np.array([[pixel_mean]], dtype=np.float32)
+                elif preprocess == 'none':
+                    pass
                 else:
                     raise RuntimeError
+                if color_mode == 'RGB':
+                    if data_advance == 'none':
+                        crop = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+                    elif data_advance.startswith('color_diff'):
+                        crop = crop[..., [4, 5, 2, 3, 0, 1]]
+                    else:
+                        raise RuntimeError
                 crop = crop[np.newaxis, ...]
                 batch_feature = np.concatenate((batch_feature, crop), 0)
                 batch_label = np.concatenate((batch_label, label), 0)
