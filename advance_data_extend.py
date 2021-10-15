@@ -15,12 +15,12 @@ from scipy import signal
 
 
 multiprocess = True
-process_num = 64
+process_num = 4
 split_instance_num = 20
 dataset = 'AWA2'
 result_datatype = 'npy'  # img, tfrecord, npy
-data_advance = 'color_diff_121_abs'  # color_diff_121, color_diff_121_abs_3ch, color_diff_121_abs, none, color_sw_GBR
-data_usage = 'train'  # data usage: train, val, test
+data_advance = 'color_diff_121_abs_3ch'  # color_diff_121, color_diff_121_abs_3ch, color_diff_121_abs, none, color_sw_GBR
+data_usage = 'val'  # data usage: train, val, test
 
 dataset_dir = configure.dataset_dir
 target_directory = Path('{}/{}/img/none/{}/'.format(dataset_dir, dataset, data_usage))
@@ -99,6 +99,17 @@ def feature_processing(image):
         feature = image
     elif data_advance == 'color_diff_121_abs':
         feature = np.absolute(color_diff_121(image))
+    elif data_advance == 'color_diff_121_abs_3ch':
+        color_diff_121_abs = np.absolute(color_diff_121(image))
+        feature = np.concatenate((
+            np.sum(color_diff_121_abs[..., [0, 1]], axis=-1)[..., np.newaxis],
+            np.sum(color_diff_121_abs[..., [2, 3]], axis=-1)[..., np.newaxis],
+            np.sum(color_diff_121_abs[..., [4, 5]], axis=-1)[..., np.newaxis]
+        ), axis=-1)
+        # showimg = np.array(feature/8, dtype=np.uint8)
+        # cv2.imshow('123', showimg)
+        # cv2.waitKey()
+        a = 0
     else:
         raise RuntimeError
     return feature
