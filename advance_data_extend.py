@@ -13,13 +13,13 @@ from scipy import signal
 #   0.00051614,  0.01895578, -0.00204118, -0.03210322, -0.00153458, -0.12204278
 # color_diff_121_abs:
 #   42.57167483915786, 44.32660178095038, 41.716144938386016, 43.35167134089522, 41.97310964205989, 43.8454831598209
-multiprocess = False
-process_num = 1
+multiprocess = True
+process_num = 16
 split_instance_num = 10
 dataset = 'AWA2'
-result_datatype = 'tfrecord'    # result_datatype: img, tfrecord, npy
-data_advance = 'none'   # data data_advance: color_diff_121, color_diff_121_3ch, color_diff_121_abs, none
-data_usage = 'train'  # data usage: train, val, test
+result_datatype = 'npy'    # result_datatype: img, tfrecord, npy
+data_advance = 'color_diff_121_abs'   # data data_advance: color_diff_121, color_diff_121_3ch, color_diff_121_abs, none
+data_usage = 'val'  # data usage: train, val, test
 
 dataset_dir = configure.dataset_dir
 target_directory = Path('{}/{}/img/none/{}/'.format(dataset_dir, dataset, data_usage))
@@ -113,9 +113,11 @@ def process_func(process_id, partial_instance_list):
         writer = tf.io.TFRecordWriter(
             str(result_directory.joinpath(
                 data_usage + '.tfrecord-' + str(split_count * process_num + process_id).zfill(5))))
-
+    count = 0
     for instance in partial_instance_list:
-        print(instance['path'])
+        if not process_id:
+            count = count + 1
+            print("{}/{}".format(count, len(partial_instance_list)))
         image, label = file_load(instance)
         shape = np.array(image.shape, dtype=np.int64)
         feature = feature_processing(image)
