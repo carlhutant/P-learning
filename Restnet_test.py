@@ -30,13 +30,13 @@ val_data_gen = crop_generator(
 )
 next(val_data_gen)
 
-# test generator speed
-count = 0
-print('Start testing generator speed')
-while True:
-    a = next(val_data_gen)
-    count = count + 1
-    print(count)
+# # test generator speed
+# count = 0
+# print('Start testing generator speed')
+# while True:
+#     a = next(val_data_gen)
+#     count = count + 1
+#     print(count)
 
 if GPU_memory_growth:
     gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -72,9 +72,12 @@ else:
 STEP_SIZE_VALID = math.ceil(val_cardinality / val_batch_size)
 
 print('resize_short_edge={}~{}'.format(val_resize_short_edge_min, val_resize_short_edge_max))
-target_dir = Path(model_dir).joinpath('AWA2').joinpath('img').joinpath('none').joinpath('random_crop').joinpath('test')
+# target_dir = Path(model_dir).joinpath('AWA2').joinpath('img').joinpath('none').joinpath('random_crop').joinpath('test')
+target_dir = ckpt_dir
 walk_generator = os.walk(target_dir)
 root, directories, files = next(walk_generator)
+result = {}
+f_count = 0
 for f in files:
     if f.startswith('ckpt-epoch') and f.endswith('index'):
         try:
@@ -109,6 +112,8 @@ for f in files:
                 if batch_instance[1][instance_No*10][maxarg] == 1:
                     positive_count = positive_count + 1
                 total_count = total_count + 1
-            print(f[:14] + '_val_accuracy-{:.4f}'.format(positive_count / total_count))
-
+        result[int(f[10:14])] = positive_count/total_count
+        print(f_count)
         print(f[:14]+'_val_accuracy-{:.4f}'.format(positive_count/total_count))
+        f_count += 1
+a = 0
