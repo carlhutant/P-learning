@@ -113,7 +113,10 @@ for f in files:
                     positive_count = positive_count + 1
                 total_count = total_count + 1
         result[int(f[10:14])] = positive_count/total_count
-        print(f_count)
-        print(f[:14]+'_val_accuracy-{:.4f}'.format(positive_count/total_count))
-        f_count += 1
+        if int(f[10:14]) == f_count:
+            print('{},{}', format(f_count, positive_count/total_count))
+            f_count += 1
+            while result.__contains__(f_count):
+                print('{},{}', format(f_count, positive_count / total_count))
+                f_count += 1
 a = 0
