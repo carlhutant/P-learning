@@ -80,8 +80,6 @@ result = {}
 f_count = 0
 files.sort()
 for f in files:
-    print(f)
-for f in files:
     if f.startswith('ckpt-epoch') and f.endswith('index'):
         try:
             # model = tf.keras.models.load_model(ckp_path)
@@ -89,7 +87,6 @@ for f in files:
             # model.load_weights(ckp_path)
             # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
             model.load_weights(Path(root).joinpath(Path(f).stem))
-            print('load {}'.format(Path(root).joinpath(Path(f).stem)))
             # print('check point found.')
         except:
             # print('no check point found.')
