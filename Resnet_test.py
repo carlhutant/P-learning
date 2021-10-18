@@ -91,18 +91,13 @@ for f in files:
         except:
             # print('no check point found.')
             raise RuntimeError
-
-        model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=False)
-                      , loss='categorical_crossentropy', metrics=['accuracy'])
         # Evaluate
         # score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
         # print(score)
         total_count = 0
         positive_count = 0
-        step_count = 0
+        # step_count = 0
         for step in range(STEP_SIZE_VALID):
-            print('{}/{}'.format(step_count, STEP_SIZE_VALID))
-            step_count += 1
             batch_instance = next(val_data_gen)
             batch_predict = model.predict(batch_instance[0])
             if batch_instance[0].shape[0] % 10 == 0:
@@ -116,6 +111,8 @@ for f in files:
                 if batch_instance[1][instance_No*10][maxarg] == 1:
                     positive_count = positive_count + 1
                 total_count = total_count + 1
+            # print('{}/{}-{}/{}'.format(step_count, STEP_SIZE_VALID, positive_count, total_count))
+            # step_count += 1
         result[int(f[10:14])] = positive_count/total_count
         if int(f[10:14]) == f_count:
             print('{},{}', format(f_count, positive_count/total_count))
