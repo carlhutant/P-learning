@@ -78,6 +78,7 @@ walk_generator = os.walk(target_dir)
 root, directories, files = next(walk_generator)
 result = {}
 f_count = 0
+files.sort()
 for f in files:
     print(f)
 for f in files:
