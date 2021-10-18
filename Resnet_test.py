@@ -79,6 +79,8 @@ root, directories, files = next(walk_generator)
 result = {}
 f_count = 0
 for f in files:
+    print(f)
+for f in files:
     if f.startswith('ckpt-epoch') and f.endswith('index'):
         try:
             # model = tf.keras.models.load_model(ckp_path)
