@@ -76,11 +76,9 @@ print('resize_short_edge={}~{}'.format(val_resize_short_edge_min, val_resize_sho
 target_dir = ckpt_dir
 walk_generator = os.walk(target_dir)
 root, directories, files = next(walk_generator)
-result = {}
-f_count = 0
 files.sort()
-for f in files:
-    print(f)
+# for f in files:
+#     print(f)
 for f in files:
     if f.startswith('ckpt-epoch') and f.endswith('index'):
         try:
@@ -89,7 +87,7 @@ for f in files:
             # model.load_weights(ckp_path)
             # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
             model.load_weights(Path(root).joinpath(Path(f).stem))
-            print('load {}'.format(Path(root).joinpath(Path(f).stem)))
+            print(str(Path(f).stem))
             # print('check point found.')
         except:
             # print('no check point found.')
@@ -116,11 +114,5 @@ for f in files:
                 total_count = total_count + 1
             # print('{}/{}-{}/{}'.format(step_count, STEP_SIZE_VALID, positive_count, total_count))
             # step_count += 1
-        result[int(f[10:14])] = positive_count/total_count
-        if int(f[10:14]) == f_count:
-            print('{},{}', format(f_count, positive_count/total_count))
-            f_count += 1
-            while result.__contains__(f_count):
-                print('{},{}', format(f_count, positive_count / total_count))
-                f_count += 1
+        print(positive_count/total_count)
 a = 0
