@@ -86,9 +86,10 @@ for f in files:
             # model.load_weights(ckp_path)
             # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
             model.load_weights(Path(root).joinpath(Path(f).stem))
-            print('check point found.')
+            print('load {}'.format(Path(root).joinpath(Path(f).stem)))
+            # print('check point found.')
         except:
-            print('no check point found.')
+            # print('no check point found.')
             raise RuntimeError
 
         model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=False)
@@ -98,7 +99,10 @@ for f in files:
         # print(score)
         total_count = 0
         positive_count = 0
+        step_count = 0
         for step in range(STEP_SIZE_VALID):
+            print('{}/{}'.format(step_count, STEP_SIZE_VALID))
+            step_count += 1
             batch_instance = next(val_data_gen)
             batch_predict = model.predict(batch_instance[0])
             if batch_instance[0].shape[0] % 10 == 0:
