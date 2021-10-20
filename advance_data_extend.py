@@ -14,12 +14,13 @@ from scipy import signal
 #   42.57167483915786, 44.32660178095038, 41.716144938386016, 43.35167134089522, 41.97310964205989, 43.8454831598209
 
 
-multiprocess = True
+multiprocess = False
 process_num = 4
 split_instance_num = 20
 dataset = 'AWA2'
-result_datatype = 'npy'  # img, tfrecord, npy
-data_advance = 'color_diff_121_abs_3ch'  # color_diff_121, color_diff_121_abs_3ch, color_diff_121_abs, none, color_sw_GBR
+result_datatype = 'img'  # img, tfrecord, npy
+# color_diff_121, color_diff_121_abs_3ch, color_diff_121_abs, none, color_sw_GBR, color_diff_121_abs_3ch
+data_advance = 'color_diff_121_abs_3ch'
 data_usage = 'val'  # data usage: train, val, test
 
 dataset_dir = configure.dataset_dir
@@ -106,10 +107,10 @@ def feature_processing(image):
             np.sum(color_diff_121_abs[..., [2, 3]], axis=-1)[..., np.newaxis],
             np.sum(color_diff_121_abs[..., [4, 5]], axis=-1)[..., np.newaxis]
         ), axis=-1)
-        # showimg = np.array(feature/8, dtype=np.uint8)
+        feature = np.array(feature/8, dtype=np.uint8)
         # cv2.imshow('123', showimg)
         # cv2.waitKey()
-        a = 0
+        # a = 0
     else:
         raise RuntimeError
     return feature
