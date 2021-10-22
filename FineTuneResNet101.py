@@ -50,34 +50,7 @@ if datatype2 is None:
         shuffle_every_epoch=val_shuffle_every_epoch
     )
 else:
-    train_data_gen = domains_feature_generator(
-        target_directory=train_dir,
-        target2_directory=train_dir2,
-        batch_size=train_batch_size,
-        final_batch_opt=train_final_batch_opt,
-        crop_type=train_crop_type,
-        crop_h=train_crop_h,
-        crop_w=train_crop_w,
-        resize_short_edge_max=train_resize_short_edge_max,
-        resize_short_edge_min=train_resize_short_edge_min,
-        horizontal_flip=train_horizontal_flip,
-        shuffle=train_shuffle,
-        shuffle_every_epoch=train_shuffle_every_epoch
-    )
-    val_data_gen = domains_feature_generator(
-        target_directory=val_dir,
-        target2_directory=val_dir2,
-        batch_size=val_batch_size,
-        final_batch_opt=val_final_batch_opt,
-        crop_type=val_crop_type,
-        crop_w=val_crop_h,
-        crop_h=val_crop_w,
-        resize_short_edge_max=val_resize_short_edge_max,
-        resize_short_edge_min=val_resize_short_edge_min,
-        horizontal_flip=val_horizontal_flip,
-        shuffle=val_shuffle,
-        shuffle_every_epoch=val_shuffle_every_epoch
-    )
+    raise RuntimeError
 
 next(train_data_gen)
 next(val_data_gen)
@@ -150,7 +123,7 @@ reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
 STEP_SIZE_TRAIN = math.ceil(train_cardinality / train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality / val_batch_size)
 
-epochs = 2000
+epochs = 400
 # try:
 #     # model = tf.keras.models.load_model(ckp_path)
 #     # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')

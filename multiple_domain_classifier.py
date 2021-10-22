@@ -106,20 +106,7 @@ next(val_data_gen)
 # while True:
 #     a = next(train_data_gen)
 #     print('a')
-# test final_batch_opt
-# a = next(train_data_gen)
-# file_remain_num = train_cardinality-batch_size
-# batch_data_num = min(batch_size, file_remain_num)
-# count = 0
-# while file_remain_num > 0:
-#     count = count + 1
-#     print(count)
-#     b = next(train_data_gen)
-#     file_remain_num = file_remain_num - batch_size
-# c = next(train_data_gen)
 
-
-# Fine tune or Retrain ResNet101
 if multi_GPU:
     raise RuntimeError
 else:
@@ -148,20 +135,10 @@ reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
                                          min_delta=1,
                                          min_lr=0.00001)
 
-# STEP_SIZE_TRAIN = 1
 STEP_SIZE_TRAIN = math.ceil(train_cardinality / train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality / val_batch_size)
 
-epochs = 300
-# try:
-#     # model = tf.keras.models.load_model(ckp_path)
-#     # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
-#     # model.load_weights(ckp_path)
-#     # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
-#     model.load_weights('/media/uscc/SSD/NE6091069/p_learning/model/AWA2/img/none/random_crop/ckpt-epoch0087_loss-0.1589_accuracy-0.9526_val_loss-181.5382_val_accuracy-0.6387')
-#     print('check point found.')
-# except:
-#     print('no check point found.')
+epochs = 400
 
 model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
@@ -172,45 +149,4 @@ model.fit_generator(train_data_gen,
                     validation_steps=STEP_SIZE_VALID,
                     callbacks=[model_checkpoint]
                     )
-# model.save(model_save_path)
-# epochs = 10
-#
-# for layer in model.layers[:335]:
-#     layer.trainable = False
-# for layer in model.layers[335:]:
-#     layer.trainable = True
-#
-#
-# model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-#
-# early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-#
-# STEP_SIZE_TRAIN = train_data_gen.n // train_data_gen.batch_size
-# STEP_SIZE_VALID = val_data_gen.n // val_data_gen.batch_size
-#
-# model.fit_generator(train_data_gen,
-#                     steps_per_epoch=STEP_SIZE_TRAIN,
-#                     epochs=epochs,
-#                     validation_data=val_data_gen,
-#                     validation_steps=STEP_SIZE_VALID,
-#                     #                     class_weight=class_weights,
-#                     callbacks=[early_stopping]
-#                     )
-#
-# model.save('./model/{}/{}_{}/ResNet101_step2.h5'.format(dataset, data_advance, datatype))
 
-# Evaluate
-# score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
-# print(score)
-# total_count = 0
-# positive_count = 0
-# for i in range(STEP_SIZE_VALID):
-#     print(i)
-#     x = next(val_data_gen)
-#     y = model.predict(x[0])
-#     y = y.sum(axis=0)
-#     maxarg = y.argmax(axis=0)
-#     if x[1][0][maxarg] == 1:
-#         positive_count = positive_count + 1
-#     total_count = total_count + 1
-# print(positive_count/total_count)
