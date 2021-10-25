@@ -35,6 +35,9 @@ next(val_data_gen)
 # print('Start testing generator speed')
 # while True:
 #     a = next(val_data_gen)
+#     img = np.array(a[0][0, ...], dtype=np.uint8)
+#     cv2.imshow('123', img)
+#     cv2.waitKey()
 #     count = count + 1
 #     print(count)
 
