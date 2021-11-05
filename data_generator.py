@@ -194,7 +194,7 @@ def crop_generator(target_directory, batch_size, final_batch_opt, crop_type, cro
                 crop = crop[np.newaxis, ...]
                 batch_feature = np.concatenate((batch_feature, crop), 0)
                 batch_label = np.concatenate((batch_label, label), 0)
-        batch_feature = batch_feature[..., [2, 0, 1]]
+        # batch_feature = batch_feature[..., [2, 0, 1]]
         yield batch_feature, batch_label
         file_remain_num = file_remain_num - batch_size
         if file_remain_num < 1:

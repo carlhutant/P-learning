@@ -129,7 +129,7 @@ try:
     # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
     # model.load_weights(ckp_path)
     # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
-    model.load_weights('E:/Model/AWA2/img/none/random_crop/ckpt-epoch0118_loss-0.3647_accuracy-0.8892_val_loss-2359.7251_val_accuracy-0.7427')
+    model.load_weights(model_dir + '/AWA2/img/none/random_crop/ckpt-epoch0118_loss-0.3647_accuracy-0.8892_val_loss-2359.7251_val_accuracy-0.7427')
     print('check point found.')
 except Exception as e:
     print(e)
@@ -144,13 +144,13 @@ model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nestero
 #     layer.trainable = True
 
 # print(model.layers[-2].name)
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    # callbacks=[model_checkpoint]
-                    )
+# model.fit_generator(train_data_gen,
+#                     steps_per_epoch=STEP_SIZE_TRAIN,
+#                     epochs=epochs,
+#                     validation_data=val_data_gen,
+#                     validation_steps=STEP_SIZE_VALID,
+#                     # callbacks=[model_checkpoint]
+#                     )
 # model.save(model_save_path)
 # epochs = 10
 #
@@ -179,9 +179,9 @@ model.fit_generator(train_data_gen,
 # model.save('./model/{}/{}_{}/ResNet101_step2.h5'.format(dataset, data_advance, datatype))
 
 # Evaluate
-# score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
-# print(score)
-# total_count = 0
+score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
+print(score)
+total_count = 0
 # positive_count = 0
 # for i in range(STEP_SIZE_VALID):
 #     print(i)
