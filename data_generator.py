@@ -16,6 +16,7 @@ def load_generator(target_directory, shuffle, shuffle_every_epoch):
     root, directory, _ = next(walk_generator)
     instance_list = []
     class_count = 0
+    directory.sort()
     for d in directory:
         walk_generator2 = os.walk(root + d)
         flies_root, _, files = next(walk_generator2)
