@@ -35,6 +35,9 @@ next(val_data_gen)
 # print('Start testing generator speed')
 # while True:
 #     a = next(val_data_gen)
+#     img = np.array(a[0][0, ...], dtype=np.uint8)
+#     cv2.imshow('123', img)
+#     cv2.waitKey()
 #     count = count + 1
 #     print(count)
 
@@ -73,46 +76,79 @@ STEP_SIZE_VALID = math.ceil(val_cardinality / val_batch_size)
 
 print('resize_short_edge={}~{}'.format(val_resize_short_edge_min, val_resize_short_edge_max))
 # target_dir = Path(model_dir).joinpath('AWA2').joinpath('img').joinpath('none').joinpath('random_crop').joinpath('test')
-target_dir = ckpt_dir
-walk_generator = os.walk(target_dir)
-root, directories, files = next(walk_generator)
-files.sort(reverse=True)
+# target_dir = ckpt_dir
+# walk_generator = os.walk(target_dir)
+# root, directories, files = next(walk_generator)
+# files.sort()
 # for f in files:
 #     print(f)
-for f in files:
-    if f.startswith('ckpt-epoch') and f.endswith('index'):
-        try:
-            # model = tf.keras.models.load_model(ckp_path)
-            # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
-            # model.load_weights(ckp_path)
-            # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
-            model.load_weights(Path(root).joinpath(Path(f).stem))
-            print(str(Path(f).stem)[:14])
-            # print('check point found.')
-        except:
-            # print('no check point found.')
-            raise RuntimeError
-        # Evaluate
-        # score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
-        # print(score)
-        total_count = 0
-        positive_count = 0
-        # step_count = 0
-        for step in range(STEP_SIZE_VALID):
-            batch_instance = next(val_data_gen)
-            batch_predict = model.predict(batch_instance[0])
-            if batch_instance[0].shape[0] % 10 == 0:
-                batch_instance_num = int(batch_instance[0].shape[0]/10)
-            else:
-                raise RuntimeError
-            for instance_No in range(batch_instance_num):
-                instance_predict = batch_predict[instance_No*10:instance_No*10+10:, ...]
-                instance_predict = instance_predict.sum(axis=0)
-                maxarg = instance_predict.argmax(axis=0)
-                if batch_instance[1][instance_No*10][maxarg] == 1:
-                    positive_count = positive_count + 1
-                total_count = total_count + 1
-            # print('{}/{}-{}/{}'.format(step_count, STEP_SIZE_VALID, positive_count, total_count))
-            # step_count += 1
-        print(positive_count/total_count)
-a = 0
+# for f in files:
+#     if f.startswith('ckpt-epoch') and f.endswith('index'):
+#         try:
+#             # model = tf.keras.models.load_model(ckp_path)
+#             # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
+#             # model.load_weights(ckp_path)
+#             # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
+#             model.load_weights(Path(root).joinpath(Path(f).stem))
+#             print(str(Path(f).stem))
+#             # print('check point found.')
+#         except:
+#             # print('no check point found.')
+#             raise RuntimeError
+#         # Evaluate
+#         # score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
+#         # print(score)
+#         total_count = 0
+#         positive_count = 0
+#         # step_count = 0
+#         for step in range(STEP_SIZE_VALID):
+#             batch_instance = next(val_data_gen)
+#             batch_predict = model.predict(batch_instance[0])
+#             if batch_instance[0].shape[0] % 10 == 0:
+#                 batch_instance_num = int(batch_instance[0].shape[0]/10)
+#             else:
+#                 raise RuntimeError
+#             for instance_No in range(batch_instance_num):
+#                 instance_predict = batch_predict[instance_No*10:instance_No*10+10:, ...]
+#                 instance_predict = instance_predict.sum(axis=0)
+#                 maxarg = instance_predict.argmax(axis=0)
+#                 if batch_instance[1][instance_No*10][maxarg] == 1:
+#                     positive_count = positive_count + 1
+#                 total_count = total_count + 1
+#             # print('{}/{}-{}/{}'.format(step_count, STEP_SIZE_VALID, positive_count, total_count))
+#             # step_count += 1
+#         print(positive_count/total_count)
+# a = 0
+
+try:
+    # model = tf.keras.models.load_model(ckp_path)
+    # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
+    # model.load_weights(ckp_path)
+    # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
+    model.load_weights(model_dir + '/AWA2/img/none/random_crop/ckpt-epoch0118_loss-0.3647_accuracy-0.8892_val_loss-2359.7251_val_accuracy-0.7427')
+    print('check point found.')
+except Exception as e:
+    print(e)
+    print('no check point found.')
+    raise RuntimeError
+# Evaluate
+# score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
+# print(score)
+total_count = 0
+positive_count = 0
+for step in range(STEP_SIZE_VALID):
+    batch_instance = next(val_data_gen)
+    batch_predict = model.predict(batch_instance[0])
+    if batch_instance[0].shape[0] % 10 == 0:
+        batch_instance_num = int(batch_instance[0].shape[0] / 10)
+    else:
+        raise RuntimeError
+    for instance_No in range(batch_instance_num):
+        instance_predict = batch_predict[instance_No * 10:instance_No * 10 + 10:, ...]
+        instance_predict = instance_predict.sum(axis=0)
+        maxarg = instance_predict.argmax(axis=0)
+        if batch_instance[1][instance_No * 10][maxarg] == 1:
+            positive_count = positive_count + 1
+        total_count = total_count + 1
+    print('{}/{}-{}'.format(step, STEP_SIZE_VALID, positive_count/total_count))
+print(positive_count / total_count)

@@ -16,9 +16,11 @@ def load_generator(target_directory, shuffle, shuffle_every_epoch):
     root, directory, _ = next(walk_generator)
     instance_list = []
     class_count = 0
+    directory.sort()
     for d in directory:
         walk_generator2 = os.walk(root + d)
         flies_root, _, files = next(walk_generator2)
+        files.sort()
         for file in files:
             instance_list.append({'path': os.path.join(flies_root, file), 'label': class_count})
         class_count = class_count + 1
@@ -49,9 +51,11 @@ def domains_load_generator(target_directory, target2_directory, shuffle, shuffle
     root, directory, _ = next(walk_generator)
     instance_list = []
     class_count = 0
+    directory.sort()
     for d in directory:
         walk_generator2 = os.walk(root + d)
         flies_root, _, files = next(walk_generator2)
+        files.sort()
         for file in files:
             instance_list.append({'path': Path(flies_root).joinpath(file),
                                   'path2': Path(target2_directory).joinpath(d).joinpath(file),
@@ -186,6 +190,11 @@ def crop_generator(target_directory, batch_size, final_batch_opt, crop_type, cro
                         crop = crop[..., [4, 5, 2, 3, 0, 1]]
                     else:
                         raise RuntimeError
+                if color_mode == 'GBR':
+                    if data_advance == 'none':
+                        crop = crop[..., [1, 0, 2]]
+                    else:
+                        raise RuntimeError
                 crop = crop[np.newaxis, ...]
                 batch_feature = np.concatenate((batch_feature, crop), 0)
                 batch_label = np.concatenate((batch_label, label), 0)
@@ -291,6 +300,11 @@ def domains_feature_generator(target_directory, target2_directory, model, model2
                         crop = crop[..., [4, 5, 2, 3, 0, 1]]
                     else:
                         raise RuntimeError
+                if color_mode == 'GBR':
+                    if data_advance == 'none':
+                        crop = crop[..., [1, 0, 2]]
+                    else:
+                        raise RuntimeError
                 crop = crop[np.newaxis, ...]
                 batch_feature = np.concatenate((batch_feature, crop), 0)
                 batch_label = np.concatenate((batch_label, label), 0)
@@ -307,6 +321,11 @@ def domains_feature_generator(target_directory, target2_directory, model, model2
                         crop = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
                     elif data_advance2.startswith('color_diff'):
                         crop = crop[..., [4, 5, 2, 3, 0, 1]]
+                    else:
+                        raise RuntimeError
+                if color_mode2 == 'GBR':
+                    if data_advance2 == 'none':
+                        crop = crop[..., [1, 0, 2]]
                     else:
                         raise RuntimeError
                 crop = crop[np.newaxis, ...]
