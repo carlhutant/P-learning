@@ -135,22 +135,21 @@ except Exception as e:
     print(e)
     print('no check point found.')
 
+for layer in model.layers:
+    layer.trainable = False
+for layer in model.layers[-1:]:
+    layer.trainable = True
+
 model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
-# for layer in model.layers:
-#     layer.trainable = False
-# for layer in model.layers[-1:]:
-#     layer.trainable = True
-
-# print(model.layers[-2].name)
-# model.fit_generator(train_data_gen,
-#                     steps_per_epoch=STEP_SIZE_TRAIN,
-#                     epochs=epochs,
-#                     validation_data=val_data_gen,
-#                     validation_steps=STEP_SIZE_VALID,
-#                     # callbacks=[model_checkpoint]
-#                     )
+model.fit_generator(train_data_gen,
+                    steps_per_epoch=STEP_SIZE_TRAIN,
+                    epochs=epochs,
+                    validation_data=val_data_gen,
+                    validation_steps=STEP_SIZE_VALID,
+                    # callbacks=[model_checkpoint]
+                    )
 # model.save(model_save_path)
 # epochs = 10
 #
@@ -179,9 +178,9 @@ model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nestero
 # model.save('./model/{}/{}_{}/ResNet101_step2.h5'.format(dataset, data_advance, datatype))
 
 # Evaluate
-score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
-print(score)
-total_count = 0
+# score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
+# print(score)
+# total_count = 0
 # positive_count = 0
 # for i in range(STEP_SIZE_VALID):
 #     print(i)
