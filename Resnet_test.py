@@ -76,7 +76,7 @@ print('resize_short_edge={}~{}'.format(val_resize_short_edge_min, val_resize_sho
 target_dir = ckpt_dir
 walk_generator = os.walk(target_dir)
 root, directories, files = next(walk_generator)
-files.sort()
+files.sort(reverse=True)
 # for f in files:
 #     print(f)
 for f in files:
@@ -87,7 +87,7 @@ for f in files:
             # model.load_weights(ckp_path)
             # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
             model.load_weights(Path(root).joinpath(Path(f).stem))
-            print(str(Path(f).stem))
+            print(str(Path(f).stem)[:14])
             # print('check point found.')
         except:
             # print('no check point found.')

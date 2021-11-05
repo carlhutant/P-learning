@@ -37,7 +37,7 @@ model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nestero
               loss='categorical_crossentropy', metrics=['accuracy'])
 try:
     model.load_weights(
-        Path('E:/Model/AWA2/img/none/ckpt-epoch0140_loss-0.3118_accuracy-0.9060_val_loss-1758.8971_val_accuracy-0.7381')
+        Path('/media/uscc/SSD/carl/p_learning/model/AWA2/img/none/random_crop/ckpt-epoch0140_loss-0.3118_accuracy-0.9060_val_loss-1758.8971_val_accuracy-0.7381')
     )
     print('check point found.')
 except Exception as e:
@@ -54,7 +54,9 @@ model2 = Model(inputs=base_model2.input, outputs=predictions2)
 model2.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=False),
                loss='categorical_crossentropy', metrics=['accuracy'])
 try:
-    model2.load_weights(Path('E:/Model/AWA2/img/none/diff'))
+    model2.load_weights(
+        Path('/media/uscc/SSD/carl/p_learning/model/AWA2/img/color_diff_121_abs_3ch/random_crop/ckpt-epoch0294_loss-0.2853_accuracy-0.9149_val_loss-1.9762_val_accuracy-0.6598')
+    )
     print('check point found.')
 except Exception as e:
     print(e)
@@ -120,7 +122,7 @@ else:
 
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1)
-model_checkpoint = ModelCheckpoint(ckpt_dir + 'ckpt-epoch{epoch:04d}'
+model_checkpoint = ModelCheckpoint(ckpt_dir2 + 'ckpt-epoch{epoch:04d}'
                                    + '_loss-{loss:.4f}'
                                    + '_accuracy-{accuracy:.4f}'
                                    + '_val_loss-{val_loss:.4f}'
