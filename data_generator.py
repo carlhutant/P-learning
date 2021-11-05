@@ -20,6 +20,7 @@ def load_generator(target_directory, shuffle, shuffle_every_epoch):
     for d in directory:
         walk_generator2 = os.walk(root + d)
         flies_root, _, files = next(walk_generator2)
+        files.sort()
         for file in files:
             instance_list.append({'path': os.path.join(flies_root, file), 'label': class_count})
         class_count = class_count + 1
@@ -50,9 +51,11 @@ def domains_load_generator(target_directory, target2_directory, shuffle, shuffle
     root, directory, _ = next(walk_generator)
     instance_list = []
     class_count = 0
+    directory.sort()
     for d in directory:
         walk_generator2 = os.walk(root + d)
         flies_root, _, files = next(walk_generator2)
+        files.sort()
         for file in files:
             instance_list.append({'path': Path(flies_root).joinpath(file),
                                   'path2': Path(target2_directory).joinpath(d).joinpath(file),
