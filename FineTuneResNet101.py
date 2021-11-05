@@ -138,8 +138,8 @@ except Exception as e:
 model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
-for layer in model.layers:
-    layer.trainable = False
+# for layer in model.layers:
+#     layer.trainable = False
 # for layer in model.layers[-1:]:
 #     layer.trainable = True
 
