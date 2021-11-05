@@ -260,6 +260,7 @@ val_data_gen = crop_generator(
 )
 next(val_data_gen)
 
+
 # test final_batch_opt
 # a = next(train_data_gen)
 # file_remain_num = train_cardinality-batch_size
@@ -296,8 +297,8 @@ else:
     # Construction
     model = Model(inputs=base_model.input, outputs=predictions)
 
-keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
-                       rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
+# keras.utils.plot_model(model, to_file='Resnet101_origin.png', show_shapes=True, show_dtype=True, show_layer_names=True,
+#                        rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1)
@@ -338,7 +339,7 @@ model.fit_generator(train_data_gen,
                     epochs=epochs,
                     validation_data=val_data_gen,
                     validation_steps=STEP_SIZE_VALID,
-                    callbacks=[model_checkpoint]
+                    # callbacks=[model_checkpoint]
                     )
 # model.save(model_save_path)
 # epochs = 10
