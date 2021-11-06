@@ -125,7 +125,8 @@ try:
     # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
     # model.load_weights(ckp_path)
     # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
-    model.load_weights(model_dir + '/AWA2/img/none/random_crop/ckpt-epoch0118_loss-0.3647_accuracy-0.8892_val_loss-2359.7251_val_accuracy-0.7427')
+    model.load_weights(
+        model_dir + '/AWA2/img/none/random_crop/ckpt-epoch0118_loss-0.3647_accuracy-0.8892_val_loss-2359.7251_val_accuracy-0.7427')
     print('check point found.')
 except Exception as e:
     print(e)
@@ -136,6 +137,7 @@ except Exception as e:
 # print(score)
 total_count = 0
 positive_count = 0
+the_sheet = np.zeros((class_num, class_num))
 for step in range(STEP_SIZE_VALID):
     batch_instance = next(val_data_gen)
     batch_predict = model.predict(batch_instance[0])
@@ -147,8 +149,17 @@ for step in range(STEP_SIZE_VALID):
         instance_predict = batch_predict[instance_No * 10:instance_No * 10 + 10:, ...]
         instance_predict = instance_predict.sum(axis=0)
         maxarg = instance_predict.argmax(axis=0)
-        if batch_instance[1][instance_No * 10][maxarg] == 1:
+        gt = -1
+        for i in range(len(batch_instance[1][instance_No * 10])):
+            if batch_instance[1][instance_No * 10][i] == 1:
+                if gt == -1:
+                    gt = i
+                else:
+                    raise RuntimeError
+        the_sheet[gt][maxarg] += 1
+        if maxarg == gt:
             positive_count = positive_count + 1
         total_count = total_count + 1
-    print('{}/{}-{}'.format(step, STEP_SIZE_VALID, positive_count/total_count))
+    print('{}/{}-{}'.format(step, STEP_SIZE_VALID, positive_count / total_count))
 print(positive_count / total_count)
+a = 0

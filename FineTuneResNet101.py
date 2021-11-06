@@ -123,7 +123,6 @@ reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
 STEP_SIZE_TRAIN = math.ceil(train_cardinality / train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality / val_batch_size)
 
-epochs = 400
 try:
     # model = tf.keras.models.load_model(ckp_path)
     # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
@@ -135,21 +134,37 @@ except Exception as e:
     print(e)
     print('no check point found.')
 
-for layer in model.layers:
-    layer.trainable = False
-for layer in model.layers[-1:]:
-    layer.trainable = True
+epochs = 400
 
-model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=False)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
+a = model.layers[-1].weights[0][0]
+# for layer in model.layers:
+#     layer.trainable = False
+# for layer in model.layers[-1:]:
+#     layer.trainable = True
+b = model.layers[-1].weights[0][0]
+model.compile(optimizer=SGD(learning_rate=0.0000001, momentum=0.5, nesterov=False), loss='categorical_crossentropy',
+                  metrics=['accuracy'])
 
+c = model.layers[-1].weights[0][0]
+# model.optimizer.learning_rate.assign(0)
 model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
+                    steps_per_epoch=5,
+                    epochs=1,
                     validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
+                    validation_steps=1,
                     # callbacks=[model_checkpoint]
                     )
+d = model.layers[-1].weights[0][0]
+model.optimizer.learning_rate.assign(0.001)
+model.fit_generator(train_data_gen,
+                    steps_per_epoch=5,
+                    epochs=1,
+                    validation_data=val_data_gen,
+                    validation_steps=1,
+                    # callbacks=[model_checkpoint]
+                    )
+e = model.layers[-1].weights[0][0]
+f = 0
 # model.save(model_save_path)
 # epochs = 10
 #
