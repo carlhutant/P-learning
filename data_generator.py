@@ -354,22 +354,54 @@ def domains_feature_generator(target_directory, target2_directory, model, model2
             file_remain_num = file_num
 
 
-def parallel_data_loader(buffer_list, config):
-    img_gen = load_generator(config['target_directory'], config['shuffle'], config['shuffle_every_epoch'])
-    file_num, dir_num = next(img_gen)
-    config['file_num'] = file_num
-    config['dir_num'] = dir_num
+def parallel_data_loader(id_, buffer, config):
+    walk_generator = os.walk(config['target_directory'])
+    root, directory, _ = next(walk_generator)
+    instance_list = []
+    class_count = 0
+    directory.sort()
+    for d in directory:
+        walk_generator2 = os.walk(root + d)
+        flies_root, _, files = next(walk_generator2)
+        files.sort()
+        for file in files:
+            instance_list.append({'path': os.path.join(flies_root, file), 'label': class_count})
+        class_count = class_count + 1
+    file_num = len(instance_list)
     if file_num != train_cardinality and file_num != val_cardinality:
         raise RuntimeError
-    if dir_num != class_num:
+    if class_count != class_num:
         raise RuntimeError
-    print("Found {} images belonging to {} classes.".format(file_num, dir_num))
+
+    if config['shuffle'] or config['shuffle_every_epoch']:
+        random.shuffle(instance_list)
+    if id_ == 0:
+        print("Found {} images belonging to {} classes.".format(file_num, class_count))
+
     while True:
-        for buffer_No in range(len(buffer_list)):
-            while len(buffer_list[buffer_No]) > 10:
+        for instance in instance_list[:id_:config['process_num']]:
+            if datatype == 'img':
+                img = cv2.imread(instance['path'])
+            elif datatype == 'npy':
+                img = np.load(instance['path'])
+            else:
+                raise RuntimeError
+            img = np.array(img, dtype=np.float32)
+
+            label = np.zeros(class_num, dtype=np.float32)
+            label[instance['label']] = 1
+            # show dolphin sw021 img
+            # if instance['label'] == 11:
+            #     print(instance['path'])
+            #     img = np.array(img[..., [0, 2, 1]], dtype=np.uint8)
+            #     cv2.imshow('123', img)
+            #     cv2.waitKey()
+            while len(buffer) > 10:
                 pass
-            buffer_list[buffer_No].append(next(img_gen))
-            # print('buffer {}: {}'.format(buffer_No, len(buffer_list[buffer_No])))
+            buffer.append((img, label))
+            print('buffer {}: {}'.format(id_, len(buffer)))
+        if config['shuffle_every_epoch']:
+            random.shuffle(instance_list)
 
 
 def parallel_crop_generator(input_buffer, output_buffer, config):
@@ -467,6 +499,7 @@ def parallel_batch_generator(target_directory, batch_size, final_batch_opt, crop
         crop_buffer_list.append(crop_buffer)
 
     config = manager.dict()
+    config['process_num'] = process_num
     config['target_directory'] = target_directory
     config['batch_size'] = batch_size
     config['final_batch_opt'] = final_batch_opt
@@ -481,15 +514,19 @@ def parallel_batch_generator(target_directory, batch_size, final_batch_opt, crop
     config['file_num'] = -1
     config['dir_num'] = -1
 
-    pdl = multiprocessing.Process(target=parallel_data_loader, args=(load_buffer_list, config), name='pdl')
-    pdl.start()
+    pdl_list = []
     pcl_list = []
     for process_No in range(process_num):
+        pdl = multiprocessing.Process(target=parallel_data_loader,
+                                      args=(process_No, load_buffer_list[process_No], config),
+                                      name='pdl-{}'.format(process_No))
+        pdl_list.append(pdl)
         pcl = multiprocessing.Process(target=parallel_crop_generator,
                                       args=(load_buffer_list[process_No], crop_buffer_list[process_No], config),
                                       name='pcl-{}'.format(process_No))
         pcl_list.append(pcl)
     for process_No in range(process_num):
+        pdl_list[process_No].start()
         pcl_list[process_No].start()
     while config['file_num'] == -1:
         pass
@@ -518,10 +555,11 @@ def parallel_batch_generator(target_directory, batch_size, final_batch_opt, crop
 
         signal = yield batch_feature, batch_label
         if signal is not None:
-            pdl.terminate()
-            pdl.join()
+
             for process_No in range(process_num):
+                pdl_list[process_No].terminate()
                 pcl_list[process_No].terminate()
+                pdl_list[process_No].join()
                 pcl_list[process_No].join()
             manager.shutdown()
             while True:
