@@ -381,8 +381,8 @@ def data_list_manager(path_buffer_list, batch_size_buffer_list, config):
     config['dir_num'] = class_count
     print("Found {} images belonging to {} classes.".format(file_num, class_count))
 
+    instance_count = 0
     while True:
-        instance_count = 0
         for process_No in range(config['process_num']):
             batch_data_count = 0
             while batch_data_count < config['batch_size']:
@@ -443,6 +443,7 @@ def parallel_crop_generator(id_, img_buffer, crop_buffer, config):
 
         img, label = img_buffer[0]
         del img_buffer[0]
+
         label = label[np.newaxis, ...]
         if config['horizontal_flip']:
             if random.randint(0, 1):
@@ -458,7 +459,6 @@ def parallel_crop_generator(id_, img_buffer, crop_buffer, config):
             new_width = random.randint(config['resize_short_edge_min'], config['resize_short_edge_max'])
             new_height = round(height * new_width / width)
         img = cv2.resize(img, (new_width, new_height))
-
         y0_list = []
         x0_list = []
         if config['crop_type'] == 'none':
@@ -511,7 +511,7 @@ def parallel_crop_generator(id_, img_buffer, crop_buffer, config):
             crop = crop[np.newaxis, ...]
             total_crop = np.concatenate((total_crop, crop), 0)
             total_label = np.concatenate((total_label, label), 0)
-        while len(crop_buffer) > 3 * config['batch_size']:
+        while len(crop_buffer) > config['batch_size']:
             pass
         crop_buffer.append((total_crop, total_label))
         # if id_ == 5:
@@ -541,9 +541,10 @@ def parallel_data_generator(target_directory, batch_size, final_batch_opt, crop_
                             resize_short_edge_max, resize_short_edge_min, horizontal_flip, shuffle, shuffle_every_epoch
                             ):
     process_num = 2
-
-    print('data generator have {} pipelines.'.format(process_num))
-    print('preparing share variables...'.format(process_num))
+    verbos = False
+    if verbos:
+        print('data generator have {} pipelines.'.format(process_num))
+        print('preparing share variables...'.format(process_num))
 
     manager = multiprocessing.Manager()
     path_buffer_list = []
@@ -579,8 +580,9 @@ def parallel_data_generator(target_directory, batch_size, final_batch_opt, crop_
     config['file_num'] = -1
     config['dir_num'] = -1
 
-    print('done')
-    print('starting sub processes...')
+    if verbos:
+        print('done')
+        print('starting sub processes...')
 
     dlm = multiprocessing.Process(target=data_list_manager, args=(path_buffer_list, batch_size_buffer_list, config))
     dlm.start()
@@ -618,7 +620,8 @@ def parallel_data_generator(target_directory, batch_size, final_batch_opt, crop_
             del batch_buffer_list[process_No][0]
             signal = yield batch_feature, batch_label
             if signal is not None:
-                print('terminating sub processes...')
+                if verbos:
+                    print('terminating sub processes...')
                 dlm.terminate()
                 dlm.join()
                 for i in range(config['process_num']):
@@ -629,6 +632,7 @@ def parallel_data_generator(target_directory, batch_size, final_batch_opt, crop_
                     pcl_list[i].join()
                     pbl_list[i].join()
                 manager.shutdown()
-                print('done')
+                if verbos:
+                    print('done')
                 while True:
                     yield

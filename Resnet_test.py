@@ -48,16 +48,18 @@ if __name__ == '__main__':
     )
     print(next(val_data_gen))
 
-    # test generator speed
-    count = 0
-    print('Start testing generator speed')
-    while True:
-        a = next(val_data_gen)
+    # # test generator speed
+    # count = 0
+    # print('Start testing generator speed')
+    # while True:
+    #     a = next(val_data_gen)
     #     # img = np.array(a[0][0, ...], dtype=np.uint8)
     #     # cv2.imshow('123', img)
     #     # cv2.waitKey()
-        count = count + 1
-        print(count)
+    #     count = count + 1
+    #     print(a[1].shape[0])
+    #     if a[1].shape[0] != 64:
+    #         a = 0
 
     if GPU_memory_growth:
         gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -181,4 +183,5 @@ if __name__ == '__main__':
             total_count = total_count + 1
         print('{}/{}-{}'.format(step, STEP_SIZE_VALID, positive_count / total_count))
     print(positive_count / total_count)
+    val_data_gen.send(1)
     a = 0
