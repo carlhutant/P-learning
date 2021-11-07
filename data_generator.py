@@ -376,10 +376,12 @@ def parallel_data_loader(id_, buffer, config):
     if config['shuffle'] or config['shuffle_every_epoch']:
         random.shuffle(instance_list)
     if id_ == 0:
+        config['file_num'] = file_num
+        config['dir_num'] = class_count
         print("Found {} images belonging to {} classes.".format(file_num, class_count))
 
     while True:
-        for instance in instance_list[:id_:config['process_num']]:
+        for instance in instance_list[id_::config['process_num']]:
             if datatype == 'img':
                 img = cv2.imread(instance['path'])
             elif datatype == 'npy':
@@ -399,12 +401,12 @@ def parallel_data_loader(id_, buffer, config):
             while len(buffer) > 10:
                 pass
             buffer.append((img, label))
-            print('buffer {}: {}'.format(id_, len(buffer)))
+            # print('buffer {}: {}'.format(id_, len(buffer)))
         if config['shuffle_every_epoch']:
             random.shuffle(instance_list)
 
 
-def parallel_crop_generator(input_buffer, output_buffer, config):
+def parallel_crop_generator(id_, input_buffer, output_buffer, config):
     random.seed(random_seed)
     while True:
         while len(input_buffer) < 1:
@@ -483,12 +485,14 @@ def parallel_crop_generator(input_buffer, output_buffer, config):
         while len(output_buffer) > 3 * max(train_batch_size, val_batch_size):
             pass
         output_buffer.append((total_crop, total_label))
+        if id_ == 5:
+            print(len(output_buffer))
 
 
 def parallel_batch_generator(target_directory, batch_size, final_batch_opt, crop_type, crop_h, crop_w,
                              resize_short_edge_max, resize_short_edge_min, horizontal_flip, shuffle, shuffle_every_epoch
                              ):
-    process_num = 4
+    process_num = 8
     manager = multiprocessing.Manager()
     load_buffer_list = []
     crop_buffer_list = []
@@ -522,7 +526,8 @@ def parallel_batch_generator(target_directory, batch_size, final_batch_opt, crop
                                       name='pdl-{}'.format(process_No))
         pdl_list.append(pdl)
         pcl = multiprocessing.Process(target=parallel_crop_generator,
-                                      args=(load_buffer_list[process_No], crop_buffer_list[process_No], config),
+                                      args=(process_No, load_buffer_list[process_No], crop_buffer_list[process_No],
+                                            config),
                                       name='pcl-{}'.format(process_No))
         pcl_list.append(pcl)
     for process_No in range(process_num):

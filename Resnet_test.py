@@ -57,7 +57,7 @@ if __name__ == '__main__':
     #     # cv2.imshow('123', img)
     #     # cv2.waitKey()
         count = count + 1
-        print(count)
+        # print(count)
 
     if GPU_memory_growth:
         gpus = tf.config.experimental.list_physical_devices('GPU')
