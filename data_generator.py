@@ -3,6 +3,7 @@ import cv2
 import math
 import random
 import numpy as np
+import multiprocessing
 from tensorflow import keras
 from tensorflow.keras.applications.resnet import ResNet101, preprocess_input
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
@@ -41,6 +42,12 @@ def load_generator(target_directory, shuffle, shuffle_every_epoch):
 
             label = np.zeros(class_num, dtype=np.float32)
             label[instance['label']] = 1
+            # show dolphin sw021 img
+            # if instance['label'] == 11:
+            #     print(instance['path'])
+            #     img = np.array(img[..., [0, 2, 1]], dtype=np.uint8)
+            #     cv2.imshow('123', img)
+            #     cv2.waitKey()
             yield img, label
         if shuffle_every_epoch:
             random.shuffle(instance_list)
@@ -117,6 +124,15 @@ def crop_generator(target_directory, batch_size, final_batch_opt, crop_type, cro
         raise RuntimeError
     if dir_num != class_num:
         raise RuntimeError
+    # # testing load_generator speed
+    # count = 0
+    # count2 = 0
+    # while True:
+    #     a = next(img_gen)
+    #     count += 1
+    #     if count % batch_size == 0:
+    #         count2 += 1
+    #         print(count2)
     yield
     random.seed(random_seed)
     file_remain_num = file_num
@@ -336,3 +352,180 @@ def domains_feature_generator(target_directory, target2_directory, model, model2
         file_remain_num = file_remain_num - batch_size
         if file_remain_num < 1:
             file_remain_num = file_num
+
+
+def parallel_data_loader(buffer_list, config):
+    img_gen = load_generator(config['target_directory'], config['shuffle'], config['shuffle_every_epoch'])
+    file_num, dir_num = next(img_gen)
+    config['file_num'] = file_num
+    config['dir_num'] = dir_num
+    if file_num != train_cardinality and file_num != val_cardinality:
+        raise RuntimeError
+    if dir_num != class_num:
+        raise RuntimeError
+    print("Found {} images belonging to {} classes.".format(file_num, dir_num))
+    while True:
+        for buffer_No in range(len(buffer_list)):
+            while len(buffer_list[buffer_No]) > 10:
+                pass
+            buffer_list[buffer_No].append(next(img_gen))
+            # print('buffer {}: {}'.format(buffer_No, len(buffer_list[buffer_No])))
+
+
+def parallel_crop_generator(input_buffer, output_buffer, config):
+    random.seed(random_seed)
+    while True:
+        while len(input_buffer) < 1:
+            pass
+
+        img, label = input_buffer[0]
+        del input_buffer[0]
+        label = label[np.newaxis, ...]
+        if config['horizontal_flip']:
+            if random.randint(0, 1):
+                img = img[:, ::-1, :]
+        height, width, _ = img.shape
+        if config['crop_type'] == 'none':
+            new_height = ['crop_h']
+            new_width = ['crop_w']
+        elif height < width:
+            new_height = random.randint(config['resize_short_edge_min'], config['resize_short_edge_max'])
+            new_width = round(width * new_height / height)
+        else:
+            new_width = random.randint(config['resize_short_edge_min'], config['resize_short_edge_max'])
+            new_height = round(height * new_width / width)
+        img = cv2.resize(img, (new_width, new_height))
+
+        y0_list = []
+        x0_list = []
+        if config['crop_type'] == 'none':
+            y0_list.append(0)
+            x0_list.append(0)
+        elif config['crop_type'] == 'center':
+            center_y = math.ceil(new_height / 2)
+            center_x = math.ceil(new_width / 2)
+            y0_list.append(center_y - math.ceil(config['crop_h'] / 2) + 1)
+            x0_list.append(center_x - math.ceil(config['crop_w'] / 2) + 1)
+        elif config['crop_type'] == 'random':  # 先不處理 crop 大於原圖的情況
+            y0_list.append(random.randint(0, new_height - config['crop_h']))
+            x0_list.append(random.randint(0, new_width - config['crop_w']))
+        elif config['crop_type'] == 'ten_crop':
+            center_y = math.ceil(new_height / 2)
+            center_x = math.ceil(new_width / 2)
+            y0_list.append(center_y - math.ceil(config['crop_h'] / 2) + 1)
+            x0_list.append(center_x - math.ceil(config['crop_w'] / 2) + 1)
+            y0_list.extend([0, 0, new_height - config['crop_h'], new_height - config['crop_h']])
+            x0_list.extend([0, new_width - config['crop_h'], 0, new_width - config['crop_h']])
+        else:
+            raise RuntimeError
+        crop_list = []
+        for y0, x0 in zip(y0_list, x0_list):
+            crop = img[y0:y0 + config['crop_h'], x0:x0 + config['crop_w'], :]
+            crop_list.append(crop)
+            if config['crop_type'] == 'ten_crop':
+                crop_list.append(crop[:, ::-1, :])
+        total_crop = np.empty([0, config['crop_h'], config['crop_w'], channel], dtype=np.float32)
+        total_label = np.empty([0, class_num], dtype=np.float32)
+        for crop in crop_list:
+            if preprocess == 'caffe':
+                crop = crop - np.array([[pixel_mean]], dtype=np.float32)
+            elif preprocess == 'none':
+                pass
+            else:
+                raise RuntimeError
+            if color_mode == 'RGB':
+                if data_advance == 'none':
+                    crop = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+                elif data_advance.startswith('color_diff'):
+                    crop = crop[..., [4, 5, 2, 3, 0, 1]]
+                else:
+                    raise RuntimeError
+            if color_mode == 'GBR':
+                if data_advance == 'none':
+                    crop = crop[..., [1, 0, 2]]
+                else:
+                    raise RuntimeError
+            crop = crop[np.newaxis, ...]
+            total_crop = np.concatenate((total_crop, crop), 0)
+            total_label = np.concatenate((total_label, label), 0)
+        while len(output_buffer) > 3 * max(train_batch_size, val_batch_size):
+            pass
+        output_buffer.append((total_crop, total_label))
+
+
+def parallel_batch_generator(target_directory, batch_size, final_batch_opt, crop_type, crop_h, crop_w,
+                             resize_short_edge_max, resize_short_edge_min, horizontal_flip, shuffle, shuffle_every_epoch
+                             ):
+    process_num = 4
+    manager = multiprocessing.Manager()
+    load_buffer_list = []
+    crop_buffer_list = []
+    for process_No in range(process_num):
+        load_buffer = manager.list()
+        crop_buffer = manager.list()
+        load_buffer_list.append(load_buffer)
+        crop_buffer_list.append(crop_buffer)
+
+    config = manager.dict()
+    config['target_directory'] = target_directory
+    config['batch_size'] = batch_size
+    config['final_batch_opt'] = final_batch_opt
+    config['crop_type'] = crop_type
+    config['crop_h'] = crop_h
+    config['crop_w'] = crop_w
+    config['resize_short_edge_max'] = resize_short_edge_max
+    config['resize_short_edge_min'] = resize_short_edge_min
+    config['horizontal_flip'] = horizontal_flip
+    config['shuffle'] = shuffle
+    config['shuffle_every_epoch'] = shuffle_every_epoch
+    config['file_num'] = -1
+    config['dir_num'] = -1
+
+    pdl = multiprocessing.Process(target=parallel_data_loader, args=(load_buffer_list, config), name='pdl')
+    pdl.start()
+    pcl_list = []
+    for process_No in range(process_num):
+        pcl = multiprocessing.Process(target=parallel_crop_generator,
+                                      args=(load_buffer_list[process_No], crop_buffer_list[process_No], config),
+                                      name='pcl-{}'.format(process_No))
+        pcl_list.append(pcl)
+    for process_No in range(process_num):
+        pcl_list[process_No].start()
+    while config['file_num'] == -1:
+        pass
+
+    while True:
+        batch_feature = np.empty([0, crop_h, crop_w, channel], dtype=np.float32)
+        batch_label = np.empty([0, class_num], dtype=np.float32)
+        file_remain_num = config['file_num']
+        if final_batch_opt == 'complete':
+            batch_data_num = min(batch_size, file_remain_num)
+        elif final_batch_opt == 'full':
+            batch_data_num = batch_size
+        else:
+            print('final_batch_opt error.')
+            raise RuntimeError
+        batch_data_count = 0
+        process_No = 0
+        while batch_data_count < batch_data_num:
+            while len(crop_buffer_list[process_No]) < 1:
+                pass
+            batch_feature = np.concatenate((batch_feature, crop_buffer_list[process_No][0][0]), axis=0)
+            batch_label = np.concatenate((batch_label, crop_buffer_list[process_No][0][1]), axis=0)
+            del crop_buffer_list[process_No][0]
+            batch_data_count += 1
+            process_No = (process_No + 1) % process_num
+
+        signal = yield batch_feature, batch_label
+        if signal is not None:
+            pdl.terminate()
+            pdl.join()
+            for process_No in range(process_num):
+                pcl_list[process_No].terminate()
+                pcl_list[process_No].join()
+            manager.shutdown()
+            while True:
+                yield
+        file_remain_num = file_remain_num - batch_size
+        if file_remain_num < 1:
+            file_remain_num = config['file_num']
