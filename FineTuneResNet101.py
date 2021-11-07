@@ -109,7 +109,7 @@ model_checkpoint = ModelCheckpoint(ckpt_dir + 'ckpt-epoch{epoch:04d}'
                                    + '_accuracy-{accuracy:.4f}'
                                    + '_val_loss-{val_loss:.4f}'
                                    + '_val_accuracy-{val_accuracy:.4f}',
-                                   save_weights_only=True,
+                                   save_weights_only=False,
                                    save_freq='epoch',
                                    verbose=0)
 reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
@@ -123,24 +123,24 @@ reduce_LR_on_plateau = ReduceLROnPlateau(monitor='val_loss',
 STEP_SIZE_TRAIN = math.ceil(train_cardinality / train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality / val_batch_size)
 
-epochs = 400
-try:
-    # model = tf.keras.models.load_model(ckp_path)
-    # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
-    # model.load_weights(ckp_path)
-    # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
-    model.load_weights(model_dir + '/AWA2/img/none/random_crop/ckpt-epoch0118_loss-0.3647_accuracy-0.8892_val_loss-2359.7251_val_accuracy-0.7427')
-    print('check point found.')
-except Exception as e:
-    print(e)
-    print('no check point found.')
+epochs = 200
+# try:
+#     # model = tf.keras.models.load_model(ckp_path)
+#     # model = tf.keras.models.load_model('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0001_loss-1.6212_accuracy-0.5446_val_loss-3.0151_val_accuracy-0.5061')
+#     # model.load_weights(ckp_path)
+#     # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
+#     model.load_weights(model_dir + '/AWA2/img/none/random_crop/ckpt-epoch0118_loss-0.3647_accuracy-0.8892_val_loss-2359.7251_val_accuracy-0.7427')
+#     print('check point found.')
+# except Exception as e:
+#     print(e)
+#     print('no check point found.')
 
-for layer in model.layers:
-    layer.trainable = False
-for layer in model.layers[-1:]:
-    layer.trainable = True
+# for layer in model.layers:
+#     layer.trainable = False
+# for layer in model.layers[-1:]:
+#     layer.trainable = True
 
-model.compile(optimizer=SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=False)
+model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.9, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
 model.fit_generator(train_data_gen,
@@ -148,7 +148,7 @@ model.fit_generator(train_data_gen,
                     epochs=epochs,
                     validation_data=val_data_gen,
                     validation_steps=STEP_SIZE_VALID,
-                    # callbacks=[model_checkpoint]
+                    callbacks=[model_checkpoint]
                     )
 # model.save(model_save_path)
 # epochs = 10
