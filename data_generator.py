@@ -354,12 +354,13 @@ def domains_feature_generator(target_directory, target2_directory, model, model2
             file_remain_num = file_num
 
 
-def parallel_data_loader(id_, buffer, config):
+def data_list_manager(path_buffer_list, batch_size_buffer_list, config):
+    random.seed(random_seed)
     walk_generator = os.walk(config['target_directory'])
     root, directory, _ = next(walk_generator)
     instance_list = []
-    class_count = 0
     directory.sort()
+    class_count = 0
     for d in directory:
         walk_generator2 = os.walk(root + d)
         flies_root, _, files = next(walk_generator2)
@@ -375,45 +376,73 @@ def parallel_data_loader(id_, buffer, config):
 
     if config['shuffle'] or config['shuffle_every_epoch']:
         random.shuffle(instance_list)
-    if id_ == 0:
-        config['file_num'] = file_num
-        config['dir_num'] = class_count
-        print("Found {} images belonging to {} classes.".format(file_num, class_count))
+
+    config['file_num'] = file_num
+    config['dir_num'] = class_count
+    print("Found {} images belonging to {} classes.".format(file_num, class_count))
 
     while True:
-        for instance in instance_list[id_::config['process_num']]:
-            if datatype == 'img':
-                img = cv2.imread(instance['path'])
-            elif datatype == 'npy':
-                img = np.load(instance['path'])
-            else:
-                raise RuntimeError
-            img = np.array(img, dtype=np.float32)
-
-            label = np.zeros(class_num, dtype=np.float32)
-            label[instance['label']] = 1
-            # show dolphin sw021 img
-            # if instance['label'] == 11:
-            #     print(instance['path'])
-            #     img = np.array(img[..., [0, 2, 1]], dtype=np.uint8)
-            #     cv2.imshow('123', img)
-            #     cv2.waitKey()
-            while len(buffer) > 10:
+        instance_count = 0
+        for process_No in range(config['process_num']):
+            batch_data_count = 0
+            while batch_data_count < config['batch_size']:
+                if instance_count >= file_num:
+                    instance_count = 0
+                    if config['shuffle_every_epoch']:
+                        random.shuffle(instance_list)
+                    if config['final_batch_opt'] == 'complete':
+                        break
+                    elif config['final_batch_opt'] == 'full':
+                        pass
+                    else:
+                        raise RuntimeError
+                while len(path_buffer_list[process_No]) > 3 * config['batch_size']:
+                    pass
+                path_buffer_list[process_No].append(instance_list[instance_count])
+                instance_count += 1
+                batch_data_count += 1
+            while len(batch_size_buffer_list[process_No]) > 3:
                 pass
-            buffer.append((img, label))
-            # print('buffer {}: {}'.format(id_, len(buffer)))
-        if config['shuffle_every_epoch']:
-            random.shuffle(instance_list)
+            batch_size_buffer_list[process_No].append(batch_data_count)
 
 
-def parallel_crop_generator(id_, input_buffer, output_buffer, config):
+def parallel_data_loader(id_, path_buffer, img_buffer, config):
+    while True:
+        while len(path_buffer) < 1:
+            pass
+        instance = path_buffer[0]
+        del path_buffer[0]
+
+        if datatype == 'img':
+            img = cv2.imread(instance['path'])
+        elif datatype == 'npy':
+            img = np.load(instance['path'])
+        else:
+            raise RuntimeError
+        img = np.array(img, dtype=np.float32)
+
+        label = np.zeros(class_num, dtype=np.float32)
+        label[instance['label']] = 1
+        # show dolphin sw021 img
+        # if instance['label'] == 11:
+        #     print(instance['path'])
+        #     img = np.array(img[..., [0, 2, 1]], dtype=np.uint8)
+        #     cv2.imshow('123', img)
+        #     cv2.waitKey()
+        while len(img_buffer) > config['batch_size']:
+            pass
+        img_buffer.append((img, label))
+        # print('buffer {}: {}'.format(id_, len(buffer)))
+
+
+def parallel_crop_generator(id_, img_buffer, crop_buffer, config):
     random.seed(random_seed)
     while True:
-        while len(input_buffer) < 1:
+        while len(img_buffer) < 1:
             pass
 
-        img, label = input_buffer[0]
-        del input_buffer[0]
+        img, label = img_buffer[0]
+        del img_buffer[0]
         label = label[np.newaxis, ...]
         if config['horizontal_flip']:
             if random.randint(0, 1):
@@ -482,25 +511,57 @@ def parallel_crop_generator(id_, input_buffer, output_buffer, config):
             crop = crop[np.newaxis, ...]
             total_crop = np.concatenate((total_crop, crop), 0)
             total_label = np.concatenate((total_label, label), 0)
-        while len(output_buffer) > 3 * max(train_batch_size, val_batch_size):
+        while len(crop_buffer) > 3 * config['batch_size']:
             pass
-        output_buffer.append((total_crop, total_label))
-        if id_ == 5:
-            print(len(output_buffer))
+        crop_buffer.append((total_crop, total_label))
+        # if id_ == 5:
+        #     print(len(crop_buffer))
 
 
-def parallel_batch_generator(target_directory, batch_size, final_batch_opt, crop_type, crop_h, crop_w,
-                             resize_short_edge_max, resize_short_edge_min, horizontal_flip, shuffle, shuffle_every_epoch
-                             ):
-    process_num = 8
+def parallel_batch_generator(id_, crop_buffer, batch_buffer, batch_size_buffer, config):
+    while True:
+        while len(batch_size_buffer) < 1:
+            pass
+        batch_feature = np.empty([0, config['crop_h'], config['crop_w'], channel], dtype=np.float32)
+        batch_label = np.empty([0, class_num], dtype=np.float32)
+        batch_data_num = batch_size_buffer[0]
+        del batch_size_buffer[0]
+        for batch_data_count in range(batch_data_num):
+            while len(crop_buffer) < 1:
+                pass
+            batch_feature = np.concatenate((batch_feature, crop_buffer[0][0]), 0)
+            batch_label = np.concatenate((batch_label, crop_buffer[0][1]), 0)
+            del crop_buffer[0]
+        while len(batch_buffer) > 3:
+            pass
+        batch_buffer.append((batch_feature, batch_label))
+
+
+def parallel_data_generator(target_directory, batch_size, final_batch_opt, crop_type, crop_h, crop_w,
+                            resize_short_edge_max, resize_short_edge_min, horizontal_flip, shuffle, shuffle_every_epoch
+                            ):
+    process_num = 2
+
+    print('data generator have {} pipelines.'.format(process_num))
+    print('preparing share variables...'.format(process_num))
+
     manager = multiprocessing.Manager()
-    load_buffer_list = []
+    path_buffer_list = []
+    img_buffer_list = []
     crop_buffer_list = []
+    batch_buffer_list = []
+    batch_size_buffer_list = []
     for process_No in range(process_num):
-        load_buffer = manager.list()
+        path_buffer = manager.list()
+        img_buffer = manager.list()
         crop_buffer = manager.list()
-        load_buffer_list.append(load_buffer)
+        batch_buffer = manager.list()
+        batch_size_buffer = manager.list()
+        path_buffer_list.append(path_buffer)
+        img_buffer_list.append(img_buffer)
         crop_buffer_list.append(crop_buffer)
+        batch_buffer_list.append(batch_buffer)
+        batch_size_buffer_list.append(batch_size_buffer)
 
     config = manager.dict()
     config['process_num'] = process_num
@@ -518,57 +579,56 @@ def parallel_batch_generator(target_directory, batch_size, final_batch_opt, crop
     config['file_num'] = -1
     config['dir_num'] = -1
 
+    print('done')
+    print('starting sub processes...')
+
+    dlm = multiprocessing.Process(target=data_list_manager, args=(path_buffer_list, batch_size_buffer_list, config))
+    dlm.start()
+
     pdl_list = []
     pcl_list = []
+    pbl_list = []
     for process_No in range(process_num):
         pdl = multiprocessing.Process(target=parallel_data_loader,
-                                      args=(process_No, load_buffer_list[process_No], config),
+                                      args=(process_No, path_buffer_list[process_No], img_buffer_list[process_No],
+                                            config),
                                       name='pdl-{}'.format(process_No))
         pdl_list.append(pdl)
         pcl = multiprocessing.Process(target=parallel_crop_generator,
-                                      args=(process_No, load_buffer_list[process_No], crop_buffer_list[process_No],
+                                      args=(process_No, img_buffer_list[process_No], crop_buffer_list[process_No],
                                             config),
                                       name='pcl-{}'.format(process_No))
         pcl_list.append(pcl)
+        pbl = multiprocessing.Process(target=parallel_batch_generator,
+                                      args=(process_No, crop_buffer_list[process_No], batch_buffer_list[process_No],
+                                            batch_size_buffer_list[process_No], config),
+                                      name='pbl-{}'.format(process_No))
+        pbl_list.append(pbl)
     for process_No in range(process_num):
         pdl_list[process_No].start()
         pcl_list[process_No].start()
-    while config['file_num'] == -1:
-        pass
+        pbl_list[process_No].start()
 
+    yield 'parallel data generator ready.'
     while True:
-        batch_feature = np.empty([0, crop_h, crop_w, channel], dtype=np.float32)
-        batch_label = np.empty([0, class_num], dtype=np.float32)
-        file_remain_num = config['file_num']
-        if final_batch_opt == 'complete':
-            batch_data_num = min(batch_size, file_remain_num)
-        elif final_batch_opt == 'full':
-            batch_data_num = batch_size
-        else:
-            print('final_batch_opt error.')
-            raise RuntimeError
-        batch_data_count = 0
-        process_No = 0
-        while batch_data_count < batch_data_num:
-            while len(crop_buffer_list[process_No]) < 1:
+        for process_No in range(process_num):
+            while len(batch_buffer_list[process_No]) < 1:
                 pass
-            batch_feature = np.concatenate((batch_feature, crop_buffer_list[process_No][0][0]), axis=0)
-            batch_label = np.concatenate((batch_label, crop_buffer_list[process_No][0][1]), axis=0)
-            del crop_buffer_list[process_No][0]
-            batch_data_count += 1
-            process_No = (process_No + 1) % process_num
-
-        signal = yield batch_feature, batch_label
-        if signal is not None:
-
-            for process_No in range(process_num):
-                pdl_list[process_No].terminate()
-                pcl_list[process_No].terminate()
-                pdl_list[process_No].join()
-                pcl_list[process_No].join()
-            manager.shutdown()
-            while True:
-                yield
-        file_remain_num = file_remain_num - batch_size
-        if file_remain_num < 1:
-            file_remain_num = config['file_num']
+            batch_feature, batch_label = batch_buffer_list[process_No][0]
+            del batch_buffer_list[process_No][0]
+            signal = yield batch_feature, batch_label
+            if signal is not None:
+                print('terminating sub processes...')
+                dlm.terminate()
+                dlm.join()
+                for i in range(config['process_num']):
+                    pdl_list[i].terminate()
+                    pcl_list[i].terminate()
+                    pbl_list[i].terminate()
+                    pdl_list[i].join()
+                    pcl_list[i].join()
+                    pbl_list[i].join()
+                manager.shutdown()
+                print('done')
+                while True:
+                    yield

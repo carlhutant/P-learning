@@ -33,7 +33,7 @@ if __name__ == '__main__':
     # )
     # next(val_data_gen)
 
-    val_data_gen = parallel_batch_generator(
+    val_data_gen = parallel_data_generator(
         target_directory=val_dir,
         batch_size=val_batch_size,
         final_batch_opt=val_final_batch_opt,
@@ -46,7 +46,7 @@ if __name__ == '__main__':
         shuffle=val_shuffle,
         shuffle_every_epoch=val_shuffle_every_epoch
     )
-    next(val_data_gen)
+    print(next(val_data_gen))
 
     # test generator speed
     count = 0
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     #     # cv2.imshow('123', img)
     #     # cv2.waitKey()
         count = count + 1
-        # print(count)
+        print(count)
 
     if GPU_memory_growth:
         gpus = tf.config.experimental.list_physical_devices('GPU')
