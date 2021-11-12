@@ -18,14 +18,16 @@ multiprocess = False
 process_num = 4
 split_instance_num = 20
 dataset = 'AWA2'
+origin_datatype = 'img'
 result_datatype = 'img'  # img, tfrecord, npy
 # color_diff_121, color_diff_121_abs_3ch, color_diff_121_abs, none, color_sw_GBR, color_diff_121_abs_3ch
-data_advance = 'color_diff_121_abs_3ch'
+origin_data_advance = 'color_sw_GBR'
+result_data_advance = 'GBR_color_diff_121_abs_3ch'
 data_usage = 'val'  # data usage: train, val, test
 
 dataset_dir = configure.dataset_dir
-target_directory = Path('{}/{}/img/none/{}/'.format(dataset_dir, dataset, data_usage))
-result_directory = Path('{}/{}/{}/{}/'.format(dataset_dir, dataset, result_datatype, data_advance))
+target_directory = Path('{}/{}/{}/{}/{}/'.format(dataset_dir, dataset, origin_datatype, origin_data_advance, data_usage))
+result_directory = Path('{}/{}/{}/{}/'.format(dataset_dir, dataset, result_datatype, result_data_advance))
 if result_datatype != 'tfrecord':
     result_directory = result_directory.joinpath(data_usage)
 
@@ -96,11 +98,11 @@ def file_load(instance):
 
 
 def feature_processing(image):
-    if data_advance == 'none':
+    if result_data_advance == 'none':
         feature = image
-    elif data_advance == 'color_diff_121_abs':
+    elif result_data_advance == 'color_diff_121_abs':
         feature = np.absolute(color_diff_121(image))
-    elif data_advance == 'color_diff_121_abs_3ch':
+    elif result_data_advance.endswith('color_diff_121_abs_3ch'):
         color_diff_121_abs = np.absolute(color_diff_121(image))
         feature = np.concatenate((
             np.sum(color_diff_121_abs[..., [0, 1]], axis=-1)[..., np.newaxis],

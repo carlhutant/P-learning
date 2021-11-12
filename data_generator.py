@@ -551,7 +551,7 @@ def parallel_batch_generator(id_, crop_buffer, batch_buffer, batch_size_buffer, 
 def parallel_data_generator(target_directory, batch_size, final_batch_opt, crop_type, crop_h, crop_w,
                             resize_short_edge_max, resize_short_edge_min, horizontal_flip, shuffle, shuffle_every_epoch
                             ):
-    process_num = 4
+    process_num = 1
     verbos = False
     if verbos:
         print('data generator have {} pipelines.'.format(process_num))
