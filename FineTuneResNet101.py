@@ -105,7 +105,7 @@ if __name__ == '__main__':
     #                            rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
     early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1)
-    model_checkpoint = ModelCheckpoint(ckpt_dir + 'ckpt-epoch{epoch:04d}'
+    model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-1-ckpt-epoch{epoch:04d}'
                                        + '_loss-{loss:.4f}'
                                        + '_accuracy-{accuracy:.4f}'
                                        + '_val_loss-{val_loss:.4f}'
@@ -136,25 +136,98 @@ if __name__ == '__main__':
     #     print('no check point found.')
 
     epochs = 200
-
-    # a = model.layers[-1].weights[0][0]
-    # for layer in model.layers:
-    #     layer.trainable = False
-    # for layer in model.layers[-1:]:
-    #     layer.trainable = True
-    # b = model.layers[-1].weights[0][0]
     model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False), loss='categorical_crossentropy',
                   metrics=['accuracy'])
-
-    # c = model.layers[-1].weights[0][0]
-    # model.optimizer.learning_rate.assign(0)
     model.fit_generator(train_data_gen,
                         steps_per_epoch=STEP_SIZE_TRAIN,
                         epochs=epochs,
-                        # validation_data=val_data_gen,
+                        validation_data=val_data_gen,
                         validation_steps=STEP_SIZE_VALID,
                         callbacks=[model_checkpoint]
                         )
+
+    epochs = 50
+    model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-2-ckpt-epoch{epoch:04d}'
+                                       + '_loss-{loss:.4f}'
+                                       + '_accuracy-{accuracy:.4f}'
+                                       + '_val_loss-{val_loss:.4f}'
+                                       + '_val_accuracy-{val_accuracy:.4f}',
+                                       save_weights_only=False,
+                                       save_freq='epoch',
+                                       verbose=0)
+    model.compile(optimizer=SGD(learning_rate=0.01, momentum=0.5, nesterov=False), loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+    model.fit_generator(train_data_gen,
+                        steps_per_epoch=STEP_SIZE_TRAIN,
+                        epochs=epochs,
+                        validation_data=val_data_gen,
+                        validation_steps=STEP_SIZE_VALID,
+                        callbacks=[model_checkpoint]
+                        )
+
+    epochs = 50
+    model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-3-ckpt-epoch{epoch:04d}'
+                                       + '_loss-{loss:.4f}'
+                                       + '_accuracy-{accuracy:.4f}'
+                                       + '_val_loss-{val_loss:.4f}'
+                                       + '_val_accuracy-{val_accuracy:.4f}',
+                                       save_weights_only=False,
+                                       save_freq='epoch',
+                                       verbose=0)
+    model.compile(optimizer=SGD(learning_rate=0.001, momentum=0.5, nesterov=False), loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+    model.fit_generator(train_data_gen,
+                        steps_per_epoch=STEP_SIZE_TRAIN,
+                        epochs=epochs,
+                        validation_data=val_data_gen,
+                        validation_steps=STEP_SIZE_VALID,
+                        callbacks=[model_checkpoint]
+                        )
+
+    epochs = 50
+    model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-4-ckpt-epoch{epoch:04d}'
+                                       + '_loss-{loss:.4f}'
+                                       + '_accuracy-{accuracy:.4f}'
+                                       + '_val_loss-{val_loss:.4f}'
+                                       + '_val_accuracy-{val_accuracy:.4f}',
+                                       save_weights_only=False,
+                                       save_freq='epoch',
+                                       verbose=0)
+    model.compile(optimizer=SGD(learning_rate=0.0001, momentum=0.5, nesterov=False), loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+    model.fit_generator(train_data_gen,
+                        steps_per_epoch=STEP_SIZE_TRAIN,
+                        epochs=epochs,
+                        validation_data=val_data_gen,
+                        validation_steps=STEP_SIZE_VALID,
+                        callbacks=[model_checkpoint]
+                        )
+
+    a = model.layers[-1].weights[0][0]
+    for layer in model.layers[:335]:
+        layer.trainable = False
+    for layer in model.layers[335:]:
+        layer.trainable = True
+    b = model.layers[-1].weights[0][0]
+    epochs = 50
+    model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-5-ckpt-epoch{epoch:04d}'
+                                       + '_loss-{loss:.4f}'
+                                       + '_accuracy-{accuracy:.4f}'
+                                       + '_val_loss-{val_loss:.4f}'
+                                       + '_val_accuracy-{val_accuracy:.4f}',
+                                       save_weights_only=False,
+                                       save_freq='epoch',
+                                       verbose=0)
+    model.compile(optimizer=SGD(learning_rate=0.00001, momentum=0.5, nesterov=False), loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+    model.fit_generator(train_data_gen,
+                        steps_per_epoch=STEP_SIZE_TRAIN,
+                        epochs=epochs,
+                        validation_data=val_data_gen,
+                        validation_steps=STEP_SIZE_VALID,
+                        callbacks=[model_checkpoint]
+                        )
+
     train_data_gen.send(1)
     val_data_gen.send(1)
     # d = model.layers[-1].weights[0][0]

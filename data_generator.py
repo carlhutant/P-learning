@@ -410,8 +410,11 @@ def parallel_data_loader(id_, path_buffer, img_buffer, config):
     while True:
         while len(path_buffer) < 1:
             pass
+        instance_num = len(path_buffer)
         instance = path_buffer[0]
         del path_buffer[0]
+        # if id_ == 0:
+        #     print('path_buffer-{}'.format(len(path_buffer)))
 
         if datatype == 'img':
             img = cv2.imread(instance['path'])
@@ -419,10 +422,8 @@ def parallel_data_loader(id_, path_buffer, img_buffer, config):
             img = np.load(instance['path'])
         else:
             raise RuntimeError
-        img = np.array(img, dtype=np.float32)
 
-        label = np.zeros(class_num, dtype=np.float32)
-        label[instance['label']] = 1
+        label = instance['label']
         # show dolphin sw021 img
         # if instance['label'] == 11:
         #     print(instance['path'])
@@ -432,7 +433,8 @@ def parallel_data_loader(id_, path_buffer, img_buffer, config):
         while len(img_buffer) > config['batch_size']:
             pass
         img_buffer.append((img, label))
-        # print('buffer {}: {}'.format(id_, len(buffer)))
+        # if id_ == 0:
+        #     print('img_buffer-{}'.format(len(img_buffer)))
 
 
 def parallel_crop_generator(id_, img_buffer, crop_buffer, config):
@@ -441,8 +443,13 @@ def parallel_crop_generator(id_, img_buffer, crop_buffer, config):
         while len(img_buffer) < 1:
             pass
 
-        img, label = img_buffer[0]
+        img_uint8, label_No = img_buffer[0]
         del img_buffer[0]
+        img = np.array(img_uint8, dtype=np.float32)
+        label = np.zeros(class_num, dtype=np.float32)
+        label[label_No] = 1
+        # if id_ == 0:
+        #     print('img_buffer-{}'.format(len(img_buffer)))
 
         label = label[np.newaxis, ...]
         if config['horizontal_flip']:
@@ -514,8 +521,8 @@ def parallel_crop_generator(id_, img_buffer, crop_buffer, config):
         while len(crop_buffer) > config['batch_size']:
             pass
         crop_buffer.append((total_crop, total_label))
-        # if id_ == 5:
-        #     print(len(crop_buffer))
+        # if id_ == 0:
+        #     print('crop_buffer-{}'.format(len(crop_buffer)))
 
 
 def parallel_batch_generator(id_, crop_buffer, batch_buffer, batch_size_buffer, config):
@@ -527,6 +534,8 @@ def parallel_batch_generator(id_, crop_buffer, batch_buffer, batch_size_buffer, 
         batch_data_num = batch_size_buffer[0]
         del batch_size_buffer[0]
         for batch_data_count in range(batch_data_num):
+            # if id_ == 0:
+            #     print('{}/{}-{}'.format(batch_data_count, batch_data_num, len(crop_buffer)))
             while len(crop_buffer) < 1:
                 pass
             batch_feature = np.concatenate((batch_feature, crop_buffer[0][0]), 0)
@@ -535,12 +544,14 @@ def parallel_batch_generator(id_, crop_buffer, batch_buffer, batch_size_buffer, 
         while len(batch_buffer) > 3:
             pass
         batch_buffer.append((batch_feature, batch_label))
+        # if id_ == 0:
+        #     print('buffer{}-{}'.format(id_, len(batch_buffer)))
 
 
 def parallel_data_generator(target_directory, batch_size, final_batch_opt, crop_type, crop_h, crop_w,
                             resize_short_edge_max, resize_short_edge_min, horizontal_flip, shuffle, shuffle_every_epoch
                             ):
-    process_num = 8
+    process_num = 1
     verbos = False
     if verbos:
         print('data generator have {} pipelines.'.format(process_num))

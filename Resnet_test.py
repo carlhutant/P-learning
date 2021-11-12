@@ -48,16 +48,18 @@ if __name__ == '__main__':
     )
     print(next(val_data_gen))
 
-    # test generator speed
-    count = 0
-    print('Start testing generator speed')
-    while True:
-        a = next(val_data_gen)
-        # img = np.array(a[0][0, ...], dtype=np.uint8)
-        # cv2.imshow('123', img)
-        # cv2.waitKey()
-        print(count)
-        count = count + 1
+    # # test generator speed
+    # count = 0
+    # print('Start testing generator speed')
+    # while True:
+    #     a = next(val_data_gen)
+    #     # img = np.array(a[0][0, ...], dtype=np.uint8)
+    #     # cv2.imshow('123', img)
+    #     # cv2.waitKey()
+    #     count = count + 1
+    #     print(count)
+    #     # if a[1].shape[0] != 64:
+    #     #     a = 0
 
     if GPU_memory_growth:
         gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -144,7 +146,7 @@ if __name__ == '__main__':
         # model.load_weights(ckp_path)
         # model.load_weights('D:\\Download\\P_learning\\model\\AWA2\img\\none\\random_crop\\ckpt-epoch0031_loss-1.6706_accuracy-0.5280_val_loss-1.9804_val_accuracy-0.5219')
         model.load_weights(
-            model_dir + '/AWA2/img/none/random_crop/ckpt-epoch0118_loss-0.3647_accuracy-0.8892_val_loss-2359.7251_val_accuracy-0.7427')
+            model_dir + '/AWA2/img/color_diff_121_abs_3ch/random_crop/ckpt-epoch0197_loss-0.4920_accuracy-0.8527_val_loss-1.5762_val_accuracy-0.6687')
         print('check point found.')
     except Exception as e:
         print(e)
@@ -155,7 +157,7 @@ if __name__ == '__main__':
     # print(score)
     total_count = 0
     positive_count = 0
-    # the_sheet = np.zeros((class_num, class_num))
+    the_sheet = np.zeros((class_num, class_num))
     for step in range(STEP_SIZE_VALID):
         batch_instance = next(val_data_gen)
         batch_predict = model.predict(batch_instance[0], batch_size=val_batch_size*10)
@@ -168,14 +170,14 @@ if __name__ == '__main__':
             instance_predict = batch_predict[instance_No * 10:instance_No * 10 + 10:, ...]
             instance_predict = instance_predict.sum(axis=0)
             maxarg = instance_predict.argmax(axis=0)
-            # gt = -1
-            # for i in range(len(batch_instance[1][instance_No * 10])):
-            #     if batch_instance[1][instance_No * 10][i] == 1:
-            #         if gt == -1:
-            #             gt = i
-            #         else:
-            #             raise RuntimeError
-            # the_sheet[gt][maxarg] += 1
+            gt = -1
+            for i in range(len(batch_instance[1][instance_No * 10])):
+                if batch_instance[1][instance_No * 10][i] == 1:
+                    if gt == -1:
+                        gt = i
+                    else:
+                        raise RuntimeError
+            the_sheet[gt][maxarg] += 1
             if batch_instance[1][instance_No * 10][maxarg] == 1:
                 positive_count = positive_count + 1
             total_count = total_count + 1
