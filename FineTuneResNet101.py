@@ -144,7 +144,7 @@ if __name__ == '__main__':
     #     layer.trainable = True
     # b = model.layers[-1].weights[0][0]
     model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False), loss='categorical_crossentropy',
-                      metrics=['accuracy'])
+                  metrics=['accuracy'])
 
     # c = model.layers[-1].weights[0][0]
     # model.optimizer.learning_rate.assign(0)
