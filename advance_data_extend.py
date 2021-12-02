@@ -21,8 +21,8 @@ dataset = 'AWA2'
 origin_datatype = 'img'
 result_datatype = 'img'  # img, tfrecord, npy
 # color_diff_121, color_diff_121_abs_3ch, color_diff_121_abs, none, color_sw_GBR, color_diff_121_abs_3ch
-origin_data_advance = 'color_sw_GBR'
-result_data_advance = 'GBR_color_diff_121_abs_3ch'
+origin_data_advance = 'none'
+result_data_advance = 'color_sw_GRB'
 data_usage = 'val'  # data usage: train, val, test
 
 dataset_dir = configure.dataset_dir
@@ -113,6 +113,8 @@ def feature_processing(image):
         # cv2.imshow('123', showimg)
         # cv2.waitKey()
         # a = 0
+    elif result_data_advance.endswith('color_sw_GRB'):
+        feature = image[..., [0, 2, 1]]
     else:
         raise RuntimeError
     return feature
