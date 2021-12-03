@@ -33,7 +33,7 @@ if __name__ == '__main__':
     # )
     # next(val_data_gen)
 
-    val_data_gen = parallel_data_generator(
+    val_data_gen = crop_generator(
         target_directory=val_dir,
         batch_size=val_batch_size,
         final_batch_opt=val_final_batch_opt,
