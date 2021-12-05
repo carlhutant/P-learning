@@ -62,6 +62,24 @@ def random_crop(img, label, config):
     return crop, label
 
 
+def resnet_caffe_preprocessing(feature, label):
+    imagenet_mean = tf.constant([123.68, 116.779, 103.939], dtype=tf.float32)
+    feature = tf.subtract(feature, imagenet_mean)
+    return feature, label
+
+
+physical_devices = tf.config.list_physical_devices('GPU')
+try:
+    # Disable first GPU
+    tf.config.set_visible_devices(physical_devices[1:], 'GPU')
+    logical_devices = tf.config.list_logical_devices('GPU')
+    # Logical device was not created for first GPU
+    assert len(logical_devices) == len(physical_devices) - 1
+except:
+    # Invalid device or cannot modify virtual devices once initialized.
+    pass
+
+
 train_config = {'crop_h': train_crop_h,
                 'crop_w': train_crop_w,
                 'resize_short_edge_max': train_resize_short_edge_max,
@@ -97,6 +115,8 @@ train_dataset = train_dataset.map(example_parse_decode)
 val_dataset = val_dataset.map(example_parse_decode)
 train_dataset = train_dataset.map(lambda img, label: random_crop(img, label, train_config))
 val_dataset = val_dataset.map(lambda img, label: random_crop(img, label, val_config))
+train_dataset = train_dataset.map(resnet_caffe_preprocessing)
+val_dataset = val_dataset.map(resnet_caffe_preprocessing)
 train_dataset = train_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
 val_dataset = val_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
 train_dataset = train_dataset.batch(train_batch_size)
@@ -127,8 +147,8 @@ model = Model(inputs=base_model.input, outputs=predictions)
 # compile
 # model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
 #               , loss='categorical_crossentropy',metrics=['accuracy'])
-tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
-                          rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
+# tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
+#                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
