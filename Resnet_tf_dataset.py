@@ -95,14 +95,14 @@ train_dataset.apply(tf.data.experimental.assert_cardinality(train_cardinality))
 val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
 train_dataset = train_dataset.map(example_parse_decode)
 val_dataset = val_dataset.map(example_parse_decode)
-train_dataset = train_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
-val_dataset = val_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
 train_dataset = train_dataset.map(lambda img, label: random_crop(img, label, train_config))
 val_dataset = val_dataset.map(lambda img, label: random_crop(img, label, val_config))
+train_dataset = train_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
+val_dataset = val_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
 train_dataset = train_dataset.batch(train_batch_size)
 val_dataset = val_dataset.batch(val_batch_size)
-# train_dataset = train_dataset.repeat(15)
-# val_dataset = val_dataset.repeat(15)
+train_dataset = train_dataset.repeat(1)
+val_dataset = val_dataset.repeat(1)
 # take = train_dataset.take(10)
 # a = take.as_numpy_iterator()
 # for _ in range(10):
@@ -133,8 +133,8 @@ tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dty
 model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
-STEP_SIZE_TRAIN = train_cardinality // train_batch_size
-STEP_SIZE_VALID = val_cardinality // val_batch_size
+STEP_SIZE_TRAIN = train_cardinality // train_batch_size + 1
+STEP_SIZE_VALID = val_cardinality // val_batch_size + 1
 
 # early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step0_epoch{}.h5'.format(dataset, 0))
@@ -143,24 +143,24 @@ model.fit(train_dataset, epochs=epochs, steps_per_epoch=STEP_SIZE_TRAIN, validat
           validation_steps=STEP_SIZE_VALID, callbacks=[])
     # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step1_epoch{}.h5'.format(dataset, i))
 
-for layer in model.layers[:335]:
-    layer.trainable = False
-for layer in model.layers[335:]:
-    layer.trainable = True
-
-model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-
-STEP_SIZE_TRAIN = train_cardinality // train_batch_size
-STEP_SIZE_VALID = val_cardinality // val_batch_size
-
-early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-epochs = 10
-print("step 2:")
-for i in range(epochs):
-    print("step 2 epoch {}:".format(i + 1))
-    model.fit(train_dataset, epochs=1, steps_per_epoch=STEP_SIZE_TRAIN, validation_data=val_dataset,
-              validation_steps=STEP_SIZE_VALID, callbacks=[early_stopping])
-    # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step2_epoch{}.h5'.format(dataset, i))
+# for layer in model.layers[:335]:
+#     layer.trainable = False
+# for layer in model.layers[335:]:
+#     layer.trainable = True
+#
+# model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
+#
+# STEP_SIZE_TRAIN = train_cardinality // train_batch_size
+# STEP_SIZE_VALID = val_cardinality // val_batch_size
+#
+# early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
+# epochs = 10
+# print("step 2:")
+# for i in range(epochs):
+#     print("step 2 epoch {}:".format(i + 1))
+#     model.fit(train_dataset, epochs=1, steps_per_epoch=STEP_SIZE_TRAIN, validation_data=val_dataset,
+#               validation_steps=STEP_SIZE_VALID, callbacks=[early_stopping])
+#     # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step2_epoch{}.h5'.format(dataset, i))
 
 # ## Evaluate
 # model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)

@@ -5,7 +5,6 @@ import cv2
 import random
 import multiprocessing
 from pathlib import Path
-from scipy import signal
 from configure import *
 
 # color_diff_121:
@@ -23,7 +22,7 @@ result_datatype = 'tfrecord'  # img, tfrecord, npy
 # color_diff_121, color_diff_121_abs_3ch, color_diff_121_abs, none, color_sw_GBR, color_diff_121_abs_3ch
 origin_data_advance = 'none'
 result_data_advance = 'none'
-data_usage = 'train'  # data usage: train, val, test
+data_usage = 'val'  # data usage: train, val, test
 
 target_directory = Path('{}/{}/{}/{}/{}/'.format(dataset_dir, dataset, origin_datatype, origin_data_advance, data_usage))
 result_directory = Path('{}/{}/{}/{}/'.format(dataset_dir, dataset, result_datatype, result_data_advance))
