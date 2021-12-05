@@ -4,6 +4,7 @@ import math
 import random
 import numpy as np
 import multiprocessing
+import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.applications.resnet import ResNet101, preprocess_input
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
@@ -459,6 +460,51 @@ def parallel_data_loader(id_, path_buffer, img_buffer, path_condition, img_condi
         #     print('img_buffer-{}'.format(len(img_buffer)))
 
 
+def parallel_crop_generator2(id_, img_buffer, crop_buffer, img_condition, crop_condition, config):
+    random.seed(random_seed)
+    while True:
+        while len(img_buffer) < 1:
+            img_condition.acquire()
+            img_condition.wait()
+            img_condition.release()
+
+        img_uint8, label_No = img_buffer[0]
+        del img_buffer[0]
+        img_condition.acquire()
+        img_condition.notify()
+        img_condition.release()
+
+        img = np.array(img_uint8, dtype=np.float32)
+        label = np.zeros(class_num, dtype=np.float32)
+        label[label_No] = 1
+        # if id_ == 0:
+        #     print('img_buffer-{}'.format(len(img_buffer)))
+
+        label = label[np.newaxis, ...]
+
+        height, width, _channel = img.shape
+        if height < width:
+            new_size = [random.randint(config['resize_short_edge_min'], config['resize_short_edge_max']), width]
+        else:
+            new_size = [height, random.randint(config['resize_short_edge_min'], config['resize_short_edge_max'])]
+
+        img = tf.image.resize(img, new_size, preserve_aspect_ratio=True)
+        crop = tf.image.random_crop(img, [config['crop_h'], config['crop_w'], _channel], random_seed)
+
+        crop = crop[np.newaxis, ...]
+
+        while len(crop_buffer) > config['batch_size']:
+            crop_condition.acquire()
+            crop_condition.wait()
+            crop_condition.release()
+        crop_buffer.append((crop, label))
+        crop_condition.acquire()
+        crop_condition.notify()
+        crop_condition.release()
+        # if id_ == 0:
+        #     print('crop_buffer-{}'.format(len(crop_buffer)))
+
+
 def parallel_crop_generator(id_, img_buffer, crop_buffer, img_condition, crop_condition, config):
     random.seed(random_seed)
     while True:
@@ -485,8 +531,8 @@ def parallel_crop_generator(id_, img_buffer, crop_buffer, img_condition, crop_co
                 img = img[:, ::-1, :]
         height, width, _ = img.shape
         if config['crop_type'] == 'none':
-            new_height = ['crop_h']
-            new_width = ['crop_w']
+            new_height = config['crop_h']
+            new_width = config['crop_w']
         elif height < width:
             new_height = random.randint(config['resize_short_edge_min'], config['resize_short_edge_max'])
             new_width = round(width * new_height / height)
@@ -604,7 +650,7 @@ def parallel_batch_generator(id_, crop_buffer, batch_buffer, batch_size_buffer, 
 def parallel_data_generator(target_directory, batch_size, final_batch_opt, crop_type, crop_h, crop_w,
                             resize_short_edge_max, resize_short_edge_min, horizontal_flip, shuffle, shuffle_every_epoch
                             ):
-    process_num = 4
+    process_num = 1
     verbos = False
     if verbos:
         print('data generator have {} pipelines.'.format(process_num))

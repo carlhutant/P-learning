@@ -15,14 +15,14 @@ from scipy import signal
 
 
 multiprocess = False
-process_num = 4
+process_num = 1
 split_instance_num = 20
 dataset = 'AWA2'
 origin_datatype = 'img'
-result_datatype = 'img'  # img, tfrecord, npy
+result_datatype = 'tfrecord'  # img, tfrecord, npy
 # color_diff_121, color_diff_121_abs_3ch, color_diff_121_abs, none, color_sw_GBR, color_diff_121_abs_3ch
 origin_data_advance = 'none'
-result_data_advance = 'color_sw_GRB'
+result_data_advance = 'none'
 data_usage = 'val'  # data usage: train, val, test
 
 dataset_dir = configure.dataset_dir
@@ -180,8 +180,8 @@ if __name__ == "__main__":
     file_num = len(instance_list)
 
     random.seed(486)
-    if result_datatype == 'tfrecord':
-        random.shuffle(instance_list)
+    # if result_datatype == 'tfrecord':
+    #     random.shuffle(instance_list)
 
     if not result_datatype == 'tfrecord':
         if not Path.is_dir(Path(result_directory).parent.parent):
