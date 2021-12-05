@@ -180,8 +180,8 @@ if __name__ == "__main__":
     file_num = len(instance_list)
 
     random.seed(486)
-    if result_datatype == 'tfrecord':
-        random.shuffle(instance_list)
+    # if result_datatype == 'tfrecord':
+    #     random.shuffle(instance_list)
 
     if not result_datatype == 'tfrecord':
         if not Path.is_dir(Path(result_directory).parent.parent):
