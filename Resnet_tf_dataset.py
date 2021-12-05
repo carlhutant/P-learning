@@ -68,16 +68,16 @@ def resnet_caffe_preprocessing(feature, label):
     return feature, label
 
 
-physical_devices = tf.config.list_physical_devices('GPU')
-try:
-    # Disable first GPU
-    tf.config.set_visible_devices(physical_devices[1:], 'GPU')
-    logical_devices = tf.config.list_logical_devices('GPU')
-    # Logical device was not created for first GPU
-    assert len(logical_devices) == len(physical_devices) - 1
-except:
-    # Invalid device or cannot modify virtual devices once initialized.
-    pass
+# physical_devices = tf.config.list_physical_devices('GPU')
+# try:
+#     # Disable first GPU
+#     tf.config.set_visible_devices(physical_devices[1:], 'GPU')
+#     logical_devices = tf.config.list_logical_devices('GPU')
+#     # Logical device was not created for first GPU
+#     assert len(logical_devices) == len(physical_devices) - 1
+# except:
+#     # Invalid device or cannot modify virtual devices once initialized.
+#     pass
 
 
 train_config = {'crop_h': train_crop_h,
@@ -150,7 +150,7 @@ model = Model(inputs=base_model.input, outputs=predictions)
 # tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
-model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+model.compile(optimizer=SGD(lr=0.1, momentum=0.5, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
 STEP_SIZE_TRAIN = train_cardinality // train_batch_size + 1
@@ -158,10 +158,10 @@ STEP_SIZE_VALID = val_cardinality // val_batch_size + 1
 
 # early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step0_epoch{}.h5'.format(dataset, 0))
-epochs = 100
+epochs = 200
 model.fit(train_dataset, epochs=epochs, steps_per_epoch=STEP_SIZE_TRAIN, validation_data=val_dataset,
           validation_steps=STEP_SIZE_VALID, callbacks=[])
-    # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step1_epoch{}.h5'.format(dataset, i))
+# model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step1_epoch{}.h5'.format(dataset, i))
 
 # for layer in model.layers[:335]:
 #     layer.trainable = False
