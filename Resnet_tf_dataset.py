@@ -101,8 +101,8 @@ train_dataset = train_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration
 val_dataset = val_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
 train_dataset = train_dataset.batch(train_batch_size)
 val_dataset = val_dataset.batch(val_batch_size)
-train_dataset = train_dataset.repeat(1)
-val_dataset = val_dataset.repeat(1)
+train_dataset = train_dataset.repeat()
+val_dataset = val_dataset.repeat()
 # take = train_dataset.take(10)
 # a = take.as_numpy_iterator()
 # for _ in range(10):
