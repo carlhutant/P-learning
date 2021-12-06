@@ -158,7 +158,7 @@ STEP_SIZE_VALID = val_cardinality // val_batch_size + 1
 
 # early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step0_epoch{}.h5'.format(dataset, 0))
-epochs = 200
+epochs = 300
 model.fit(train_dataset, epochs=epochs, steps_per_epoch=STEP_SIZE_TRAIN, validation_data=val_dataset,
           validation_steps=STEP_SIZE_VALID, callbacks=[])
 # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step1_epoch{}.h5'.format(dataset, i))
