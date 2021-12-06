@@ -44,6 +44,7 @@ def example_parse_decode(raw_example):
         })
     dense = tf.sparse.to_dense(example['feature'])[0]
     feature = tf.io.decode_jpeg(dense, channels=3)
+    feature = tf.cast(feature, dtype=tf.float32)
     label = example['label']
     return feature, label
 
@@ -53,7 +54,7 @@ def random_crop(img, label, config):
     shape = tf.slice(shape, [0], [2])
     shape_min = tf.reduce_min(shape)
     target_short_edge = tf.random.uniform(shape=[], minval=config['resize_short_edge_min'],
-                                          maxval=config['resize_short_edge_min'] + 1, dtype=tf.int32)
+                                          maxval=config['resize_short_edge_max'] + 1, dtype=tf.int32)
     ratio = tf.divide(target_short_edge, shape_min)
     shape = tf.multiply(tf.cast(shape, dtype=tf.float64), ratio)
     shape = tf.cast(shape, dtype=tf.int32)
@@ -62,9 +63,66 @@ def random_crop(img, label, config):
     return crop, label
 
 
+def random_plus2_crop(img, label, config):
+    shape = tf.shape(img)
+    shape = tf.slice(shape, [0], [2])
+    shape_min = tf.reduce_min(shape)
+    target_short_edge = tf.random.uniform(shape=[], minval=config['resize_short_edge_min'],
+                                          maxval=config['resize_short_edge_max'] + 1, dtype=tf.int32)
+    ratio = tf.divide(target_short_edge, shape_min)
+    shape = tf.multiply(tf.cast(shape, dtype=tf.float64), ratio)
+    shape = tf.cast(shape, dtype=tf.int32)
+    img = tf.image.resize(images=img, size=shape, preserve_aspect_ratio=True)
+    crop = tf.image.random_crop(value=img, size=(config['crop_h'] + 2, config['crop_w'] + 2, config['channel']))
+    return crop, label
+
+
+def color_diff_121(img):
+    shape = tf.shape(img)
+    img = tf.expand_dims(img, 0)
+    filter_h = np.array([
+        [[[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[-1, 0, 0], [0, -1, 0], [0, 0, -1]]],
+        [[[2, 0, 0], [0, 2, 0], [0, 0, 2]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[-2, 0, 0], [0, -2, 0], [0, 0, -2]]],
+        [[[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[-1, 0, 0], [0, -1, 0], [0, 0, -1]]]
+    ])
+    filter_v = np.array([
+        [[[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[2, 0, 0], [0, 2, 0], [0, 0, 2]], [[1, 0, 0], [0, 1, 0], [0, 0, 1]]],
+        [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]],
+        [[[-1, 0, 0], [0, -1, 0], [0, 0, -1]], [[-2, 0, 0], [0, -2, 0], [0, 0, -2]],
+         [[-1, 0, 0], [0, -1, 0], [0, 0, -1]]]
+    ])
+    filter_h = tf.constant(filter_h, dtype=tf.float32)
+    filter_v = tf.constant(filter_v, dtype=tf.float32)
+    diff_h = tf.nn.conv2d(img, filter_h, strides=[1, 1, 1, 1], padding='SAME')
+    diff_v = tf.nn.conv2d(img, filter_v, strides=[1, 1, 1, 1], padding='SAME')
+    diff = tf.divide(tf.abs(diff_h) + tf.abs(diff_v), tf.constant(8 * 255, dtype=tf.float32))
+    diff = tf.reshape(diff, shape)
+    return diff
+
+
 def resnet_caffe_preprocessing(feature, label):
     imagenet_mean = tf.constant([123.68, 116.779, 103.939], dtype=tf.float32)
     feature = tf.subtract(feature, imagenet_mean)
+    return feature, label
+
+
+def resnet_tf_preprocessing(feature, label):
+    feature = tf.divide(feature, tf.constant(127.5))
+    feature = tf.subtract(feature, tf.constant(1))
+    return feature, label
+
+
+def resnet_0_1_preprocessing(feature, label):
+    feature = tf.divide(feature, tf.constant(255, dtype=tf.float32))
+    return feature, label
+
+
+def tmp_combine_6ch(feature, label, config):
+    diff = color_diff_121(feature)
+    diff = tf.slice(diff, [1, 1, 0], [config['crop_h'], config['crop_w'], config['channel']])
+    feature = tf.slice(feature, [1, 1, 0], [config['crop_h'], config['crop_w'], config['channel']])
+    feature, _ = resnet_0_1_preprocessing(feature, label)
+    feature = tf.concat([feature, diff], 2)
     return feature, label
 
 
@@ -113,18 +171,20 @@ train_dataset.apply(tf.data.experimental.assert_cardinality(train_cardinality))
 val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
 train_dataset = train_dataset.map(example_parse_decode)
 val_dataset = val_dataset.map(example_parse_decode)
-train_dataset = train_dataset.map(lambda img, label: random_crop(img, label, train_config))
-val_dataset = val_dataset.map(lambda img, label: random_crop(img, label, val_config))
-train_dataset = train_dataset.map(resnet_caffe_preprocessing)
-val_dataset = val_dataset.map(resnet_caffe_preprocessing)
+train_dataset = train_dataset.map(lambda img, label: random_plus2_crop(img, label, train_config))
+val_dataset = val_dataset.map(lambda img, label: random_plus2_crop(img, label, val_config))
+train_dataset = train_dataset.map(lambda img, label: tmp_combine_6ch(img, label, train_config))
+val_dataset = val_dataset.map(lambda img, label: tmp_combine_6ch(img, label, val_config))
+# take = train_dataset.take(1)
+# a = take.as_numpy_iterator()
+
 train_dataset = train_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
 val_dataset = val_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
 train_dataset = train_dataset.batch(train_batch_size)
 val_dataset = val_dataset.batch(val_batch_size)
 train_dataset = train_dataset.repeat()
 val_dataset = val_dataset.repeat()
-# take = train_dataset.take(10)
-# a = take.as_numpy_iterator()
+
 # for _ in range(10):
 #     b = next(a)
 #     c = b[0][0, ...]
@@ -132,7 +192,7 @@ val_dataset = val_dataset.repeat()
 #     cv2.imshow('123', sh)
 #     cv2.waitKey()
 # # Fine tune or Retrain ResNet101
-base_model = ResNet101(weights=None, include_top=False)
+base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 6))
 
 # add a global average pooling layer
 x = base_model.output
