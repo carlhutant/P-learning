@@ -153,7 +153,7 @@ val_config = {'crop_h': val_crop_h,
 
 tf.random.set_seed(seed=random_seed)
 train_files_list = tf.data.Dataset.list_files(str(Path(train_dir).parent.joinpath('train.tfrecord*')))
-val_files_list = tf.data.Dataset.list_files(str(Path(val_dir).parent.joinpath('val.tfrecord*')))
+val_files_list = tf.data.Dataset.list_files(str(Path(val_dir).parent.parent.joinpath('color_sw_RBG').joinpath('val.tfrecord*')))
 # for f in train_files_list.take(5):
 #     print(f.numpy())
 train_dataset = tf.data.TFRecordDataset(train_files_list)
