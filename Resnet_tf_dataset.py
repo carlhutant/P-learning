@@ -95,7 +95,8 @@ def color_diff_121(img):
     filter_v = tf.constant(filter_v, dtype=tf.float32)
     diff_h = tf.nn.conv2d(img, filter_h, strides=[1, 1, 1, 1], padding='SAME')
     diff_v = tf.nn.conv2d(img, filter_v, strides=[1, 1, 1, 1], padding='SAME')
-    diff = tf.divide(tf.abs(diff_h) + tf.abs(diff_v), tf.constant(8 * 255, dtype=tf.float32))
+    diff = tf.divide(tf.abs(diff_h) + tf.abs(diff_v), tf.constant(8, dtype=tf.float32))
+    # diff = tf.divide(tf.abs(diff_h) + tf.abs(diff_v), tf.constant(8 * 255, dtype=tf.float32))
     diff = tf.reshape(diff, shape)
     return diff
 
@@ -121,7 +122,7 @@ def tmp_combine_6ch(feature, label, config):
     diff = color_diff_121(feature)
     diff = tf.slice(diff, [1, 1, 0], [config['crop_h'], config['crop_w'], config['channel']])
     feature = tf.slice(feature, [1, 1, 0], [config['crop_h'], config['crop_w'], config['channel']])
-    feature, _ = resnet_0_1_preprocessing(feature, label)
+    # feature, _ = resnet_0_1_preprocessing(feature, label)
     feature = tf.concat([feature, diff], 2)
     return feature, label
 
@@ -153,7 +154,8 @@ val_config = {'crop_h': val_crop_h,
 
 tf.random.set_seed(seed=random_seed)
 train_files_list = tf.data.Dataset.list_files(str(Path(train_dir).parent.joinpath('train.tfrecord*')))
-val_files_list = tf.data.Dataset.list_files(str(Path(val_dir).parent.parent.joinpath('color_sw_RBG').joinpath('val.tfrecord*')))
+val_files_list = tf.data.Dataset.list_files(
+    str(Path(val_dir).parent.parent.joinpath('color_sw_RBG').joinpath('val.tfrecord*')))
 # for f in train_files_list.take(5):
 #     print(f.numpy())
 train_dataset = tf.data.TFRecordDataset(train_files_list)
@@ -171,12 +173,15 @@ train_dataset.apply(tf.data.experimental.assert_cardinality(train_cardinality))
 val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
 train_dataset = train_dataset.map(example_parse_decode)
 val_dataset = val_dataset.map(example_parse_decode)
-train_dataset = train_dataset.map(lambda img, label: random_plus2_crop(img, label, train_config))
-val_dataset = val_dataset.map(lambda img, label: random_plus2_crop(img, label, val_config))
-train_dataset = train_dataset.map(lambda img, label: tmp_combine_6ch(img, label, train_config))
-val_dataset = val_dataset.map(lambda img, label: tmp_combine_6ch(img, label, val_config))
-# take = train_dataset.take(1)
-# a = take.as_numpy_iterator()
+train_dataset = train_dataset.map(lambda img, label: random_crop(img, label, train_config))
+val_dataset = val_dataset.map(lambda img, label: random_crop(img, label, val_config))
+train_dataset = train_dataset.map(resnet_caffe_preprocessing)
+val_dataset = val_dataset.map(resnet_caffe_preprocessing)
+
+# train_dataset = train_dataset.map(lambda img, label: random_plus2_crop(img, label, train_config))
+# val_dataset = val_dataset.map(lambda img, label: random_plus2_crop(img, label, val_config))
+# train_dataset = train_dataset.map(lambda img, label: tmp_combine_6ch(img, label, train_config))
+# val_dataset = val_dataset.map(lambda img, label: tmp_combine_6ch(img, label, val_config))
 
 train_dataset = train_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
 val_dataset = val_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
@@ -185,28 +190,29 @@ val_dataset = val_dataset.batch(val_batch_size)
 train_dataset = train_dataset.repeat()
 val_dataset = val_dataset.repeat()
 
+take = train_dataset.take(10)
+a = take.as_numpy_iterator()
+
 # for _ in range(10):
 #     b = next(a)
-#     c = b[0][0, ...]
-#     sh = np.array(c, dtype=np.uint8)
-#     cv2.imshow('123', sh)
-#     cv2.waitKey()
-# # Fine tune or Retrain ResNet101
-base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 6))
+#     for i in range(train_batch_size):
+#         c = b[0][i, ..., :3]
+#         c = c[..., [2, 1, 0]]
+#         sh = np.array(c, dtype=np.uint8)
+#         cv2.imshow('123', sh)
+#         cv2.waitKey()
 
+# # Fine tune or Retrain ResNet101
+# import resnet
+base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, channel))
 # add a global average pooling layer
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
-
 # add a classifier
 predictions = Dense(class_num, activation='softmax')(x)
-
 # Construct
 model = Model(inputs=base_model.input, outputs=predictions)
 
-# compile
-# model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
-#               , loss='categorical_crossentropy',metrics=['accuracy'])
 # tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
@@ -216,11 +222,23 @@ model.compile(optimizer=SGD(lr=0.1, momentum=0.5, nesterov=False)
 STEP_SIZE_TRAIN = train_cardinality // train_batch_size + 1
 STEP_SIZE_VALID = val_cardinality // val_batch_size + 1
 
+model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-1-ckpt-epoch{epoch:04d}'
+                                   + '_loss-{loss:.4f}'
+                                   + '_accuracy-{accuracy:.4f}'
+                                   + '_val_loss-{val_loss:.4f}'
+                                   + '_val_accuracy-{val_accuracy:.4f}',
+                                   save_weights_only=False,
+                                   save_freq='epoch',
+                                   verbose=0)
 # early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-# model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step0_epoch{}.h5'.format(dataset, 0))
-epochs = 300
-model.fit(train_dataset, epochs=epochs, steps_per_epoch=STEP_SIZE_TRAIN, validation_data=val_dataset,
-          validation_steps=STEP_SIZE_VALID, callbacks=[])
+
+epochs = 5
+model.fit(train_dataset,
+          epochs=epochs,
+          steps_per_epoch=STEP_SIZE_TRAIN,
+          validation_data=val_dataset,
+          validation_steps=STEP_SIZE_VALID,
+          callbacks=[model_checkpoint])
 # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step1_epoch{}.h5'.format(dataset, i))
 
 # for layer in model.layers[:335]:
