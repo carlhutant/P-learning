@@ -13,6 +13,7 @@ from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.optimizers import SGD
 from data_generator import *
+from ResnetDIY import *
 
 warnings.filterwarnings('ignore')
 

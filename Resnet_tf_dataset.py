@@ -5,12 +5,13 @@ import numpy as np
 import cv2
 import random
 import math
+import ResnetDIY
 
 from tensorflow import keras
 from tensorflow.keras import optimizers
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.applications.resnet import ResNet101, preprocess_input
-from tensorflow.keras.models import Model
+from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
 from tensorflow.keras import backend as K
 from tensorflow.keras.optimizers import SGD
@@ -20,6 +21,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.optimizers import SGD
 from configure import *
 from pathlib import Path
+
 
 
 def tf_parse(raw_example):
@@ -77,55 +79,6 @@ def random_plus2_crop(img, label, config):
     return crop, label
 
 
-def ten_crop(img, label, config):
-    shape = tf.shape(img)
-    height = tf.slice(shape, [0], [1])
-    width = tf.slice(shape, [2], [1])
-    lt = tf.expand_dims(tf.slice(img, [0, 0, 0], [config['crop_h'], config['crop_w'], config['channel']]), 0)
-    lb = tf.expand_dims(
-        tf.slice(img, tf.concat([tf.subtract(height, config['crop_h'] + 1), tf.constant([0]), tf.constant([0])], 0),
-                 [config['crop_h'], config['crop_w'], config['channel']]), 0)
-    c = tf.expand_dims(
-        tf.slice(img, tf.concat([tf.cast(tf.subtract(tf.divide(height, 2), config['crop_h'] // 2), dtype=tf.int32),
-                                 tf.cast(tf.subtract(tf.divide(width, 2), config['crop_w'] // 2), dtype=tf.int32),
-                                 tf.constant([0])], 0),
-                 [config['crop_h'], config['crop_w'], config['channel']]), 0)
-    rt = tf.expand_dims(
-        tf.slice(img, tf.concat([tf.constant([0]), tf.subtract(width, config['crop_w'] + 1), tf.constant([0])], 0),
-                 [config['crop_h'], config['crop_w'], config['channel']]), 0)
-    rb = tf.expand_dims(tf.slice(img, tf.concat([tf.subtract(height, config['crop_h'] + 1),
-                                                 tf.subtract(width, config['crop_w'] + 1), tf.constant([0])], 0),
-                                 [config['crop_h'], config['crop_w'], config['channel']]), 0)
-    img = tf.image.flip_left_right(img)
-    flt = tf.expand_dims(tf.slice(img, [0, 0, 0], [config['crop_h'], config['crop_w'], config['channel']]), 0)
-    flb = tf.expand_dims(
-        tf.slice(img, tf.concat([tf.subtract(height, config['crop_h'] + 1), tf.constant([0]), tf.constant([0])], 0),
-                 [config['crop_h'], config['crop_w'], config['channel']]), 0)
-    fc = tf.expand_dims(
-        tf.slice(img, tf.concat([tf.cast(tf.subtract(tf.divide(height, 2), config['crop_h'] // 2), dtype=tf.int32),
-                                 tf.cast(tf.subtract(tf.divide(width, 2), config['crop_w'] // 2), dtype=tf.int32),
-                                 tf.constant([0])], 0),
-                 [config['crop_h'], config['crop_w'], config['channel']]), 0)
-    frt = tf.expand_dims(
-        tf.slice(img, tf.concat([tf.constant([0]), tf.subtract(width, config['crop_w'] + 1), tf.constant([0])], 0),
-                 [config['crop_h'], config['crop_w'], config['channel']]), 0)
-    frb = tf.expand_dims(tf.slice(img, tf.concat([tf.subtract(height, config['crop_h'] + 1),
-                                                  tf.subtract(width, config['crop_w'] + 1), tf.constant([0])], 0),
-                                  [config['crop_h'], config['crop_w'], config['channel']]), 0)
-    crop = tf.concat([lt, lb, c, rt, rb, flt, flb, fc, frt, frb], axis=0)
-    new_label = tf.reshape(label, [1, config['class_num']])  # size: (,) -> (1,class_num)
-    new_label = tf.tile(new_label, [10, 1])  # size: (1,class_num) -> (10,class_num)
-    print(type(img))
-    print(type(label))
-    print(img.shape)
-    print(label.shape)
-    print(type(crop))
-    print(type(new_label))
-    print(crop.shape)
-    print(new_label.shape)
-    return img, label
-
-
 def color_diff_121(img):
     shape = tf.shape(img)
     img = tf.expand_dims(img, 0)
@@ -144,8 +97,8 @@ def color_diff_121(img):
     filter_v = tf.constant(filter_v, dtype=tf.float32)
     diff_h = tf.nn.conv2d(img, filter_h, strides=[1, 1, 1, 1], padding='SAME')
     diff_v = tf.nn.conv2d(img, filter_v, strides=[1, 1, 1, 1], padding='SAME')
-    # diff = tf.divide(tf.abs(diff_h) + tf.abs(diff_v), tf.constant(8, dtype=tf.float32))
-    diff = tf.divide(tf.abs(diff_h) + tf.abs(diff_v), tf.constant(8 * 255, dtype=tf.float32))
+    diff = tf.divide(tf.abs(diff_h) + tf.abs(diff_v), tf.constant(8, dtype=tf.float32))
+    # diff = tf.divide(tf.abs(diff_h) + tf.abs(diff_v), tf.constant(8 * 255, dtype=tf.float32))
     diff = tf.reshape(diff, shape)
     return diff
 
@@ -171,7 +124,7 @@ def tmp_combine_6ch(feature, label, config):
     diff = color_diff_121(feature)
     diff = tf.slice(diff, [1, 1, 0], [config['crop_h'], config['crop_w'], config['channel']])
     feature = tf.slice(feature, [1, 1, 0], [config['crop_h'], config['crop_w'], config['channel']])
-    feature, _ = resnet_0_1_preprocessing(feature, label)
+    # feature, _ = resnet_0_1_preprocessing(feature, label)
     feature = tf.concat([feature, diff], 2)
     return feature, label
 
@@ -192,22 +145,19 @@ train_config = {'crop_h': train_crop_h,
                 'crop_w': train_crop_w,
                 'resize_short_edge_max': train_resize_short_edge_max,
                 'resize_short_edge_min': train_resize_short_edge_min,
-                'channel': channel,
-                'class_num': class_num
+                'channel': channel
                 }
 val_config = {'crop_h': val_crop_h,
               'crop_w': val_crop_w,
               'resize_short_edge_max': val_resize_short_edge_max,
               'resize_short_edge_min': val_resize_short_edge_min,
-              'channel': channel,
-              'class_num': class_num
+              'channel': channel
               }
 
 tf.random.set_seed(seed=random_seed)
 train_files_list = tf.data.Dataset.list_files(str(Path(train_dir).parent.joinpath('train.tfrecord*')))
-val_files_list = tf.data.Dataset.list_files(str(Path(val_dir).parent.joinpath('val.tfrecord*')))
-# val_files_list = tf.data.Dataset.list_files(
-#     str(Path(val_dir).parent.parent.joinpath('color_sw_RBG').joinpath('val.tfrecord*')))
+val_files_list = tf.data.Dataset.list_files(
+    str(Path(val_dir).parent.parent.joinpath('color_sw_RBG').joinpath('val.tfrecord*')))
 # for f in train_files_list.take(5):
 #     print(f.numpy())
 train_dataset = tf.data.TFRecordDataset(train_files_list)
@@ -225,49 +175,49 @@ train_dataset.apply(tf.data.experimental.assert_cardinality(train_cardinality))
 val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
 train_dataset = train_dataset.map(example_parse_decode)
 val_dataset = val_dataset.map(example_parse_decode)
-train_dataset = train_dataset.map(lambda img, label: ten_crop(img, label, train_config))
-val_dataset = val_dataset.map(lambda img, label: ten_crop(img, label, val_config))
-
-# train_dataset = train_dataset.map(lambda img, label: random_crop(img, label, train_config))
-# val_dataset = val_dataset.map(lambda img, label: random_crop(img, label, val_config))
-# train_dataset = train_dataset.map(resnet_caffe_preprocessing)
-# val_dataset = val_dataset.map(resnet_caffe_preprocessing)
+train_dataset = train_dataset.map(lambda img, label: random_crop(img, label, train_config))
+val_dataset = val_dataset.map(lambda img, label: random_crop(img, label, val_config))
+train_dataset = train_dataset.map(resnet_caffe_preprocessing)
+val_dataset = val_dataset.map(resnet_caffe_preprocessing)
 
 # train_dataset = train_dataset.map(lambda img, label: random_plus2_crop(img, label, train_config))
 # val_dataset = val_dataset.map(lambda img, label: random_plus2_crop(img, label, val_config))
 # train_dataset = train_dataset.map(lambda img, label: tmp_combine_6ch(img, label, train_config))
 # val_dataset = val_dataset.map(lambda img, label: tmp_combine_6ch(img, label, val_config))
 
-# train_dataset = train_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
-# val_dataset = val_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
-# train_dataset = train_dataset.batch(train_batch_size)
-# val_dataset = val_dataset.batch(val_batch_size)
-# train_dataset = train_dataset.repeat()
-# val_dataset = val_dataset.repeat()
+train_dataset = train_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
+val_dataset = val_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
+train_dataset = train_dataset.batch(train_batch_size)
+val_dataset = val_dataset.batch(val_batch_size)
+train_dataset = train_dataset.repeat()
+val_dataset = val_dataset.repeat()
 
-take = train_dataset.take(10)
-a = take.as_numpy_iterator()
-for _ in range(10):
-    b = next(a)
-    for i in range(train_batch_size):
-        c = b[0][i, ...]
-        c = c[..., [2, 1, 0]]
-        # sh = np.array(c, dtype=np.uint8)
-        # cv2.imshow('123', sh)
-        # cv2.waitKey()
+# take = train_dataset.take(10)
+# a = take.as_numpy_iterator()
+#
+# for _ in range(10):
+#     b = next(a)
+#     for i in range(train_batch_size):
+#         c = b[0][i, ..., :3]
+#         c = c[..., [2, 1, 0]]
+#         sh = np.array(c, dtype=np.uint8)
+#         cv2.imshow('123', sh)
+#         cv2.waitKey()
 
 # # Fine tune or Retrain ResNet101
 # import resnet
-base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 6))
+# base_model = ResNet101(weights='imagenet', include_top=True)
+model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
 # add a global average pooling layer
-x = base_model.output
-x = GlobalAveragePooling2D()(x)
+# x = base_model.output
+# x = GlobalAveragePooling2D()(x)
 # add a classifier
-predictions = Dense(class_num, activation='softmax')(x)
+# predictions = Dense(class_num, activation='softmax')(x)
 # Construct
-model = Model(inputs=base_model.input, outputs=predictions)
-
-# tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
+# model = Model(inputs=base_model.input, outputs=predictions)
+# base_model.save('E:/Model/AWA2/tfrecord/none/imagenet')
+# model = load_model('E:/Model/AWA2/tfrecord/none/imagenet')
+# tf.keras.utils.plot_model(base_model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False)
@@ -281,20 +231,20 @@ model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-1-ckpt-epoch{epoch:04d}'
                                    + '_accuracy-{accuracy:.4f}'
                                    + '_val_loss-{val_loss:.4f}'
                                    + '_val_accuracy-{val_accuracy:.4f}',
-                                   save_weights_only=True,
+                                   save_weights_only=False,
                                    save_freq='epoch',
                                    verbose=0)
 # early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 
-epochs = 300
+epochs = 5
 model.fit(train_dataset,
           epochs=epochs,
           steps_per_epoch=STEP_SIZE_TRAIN,
           validation_data=val_dataset,
           validation_steps=STEP_SIZE_VALID,
-          callbacks=[model_checkpoint])
+          # callbacks=[model_checkpoint]
+          )
 # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step1_epoch{}.h5'.format(dataset, i))
-# model.save(ckpt_dir + 'lr1e-1-ckpt-epoch1')
 
 # for layer in model.layers[:335]:
 #     layer.trainable = False
