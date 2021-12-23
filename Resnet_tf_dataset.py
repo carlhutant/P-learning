@@ -5,12 +5,13 @@ import numpy as np
 import cv2
 import random
 import math
+import ResnetDIY
 
 from tensorflow import keras
 from tensorflow.keras import optimizers
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.applications.resnet import ResNet101, preprocess_input
-from tensorflow.keras.models import Model
+from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
 from tensorflow.keras import backend as K
 from tensorflow.keras.optimizers import SGD
@@ -20,6 +21,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.optimizers import SGD
 from configure import *
 from pathlib import Path
+
 
 
 def tf_parse(raw_example):
@@ -190,9 +192,9 @@ val_dataset = val_dataset.batch(val_batch_size)
 train_dataset = train_dataset.repeat()
 val_dataset = val_dataset.repeat()
 
-take = train_dataset.take(10)
-a = take.as_numpy_iterator()
-
+# take = train_dataset.take(10)
+# a = take.as_numpy_iterator()
+#
 # for _ in range(10):
 #     b = next(a)
 #     for i in range(train_batch_size):
@@ -204,19 +206,21 @@ a = take.as_numpy_iterator()
 
 # # Fine tune or Retrain ResNet101
 # import resnet
-base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, channel))
+# base_model = ResNet101(weights='imagenet', include_top=True)
+model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
 # add a global average pooling layer
-x = base_model.output
-x = GlobalAveragePooling2D()(x)
+# x = base_model.output
+# x = GlobalAveragePooling2D()(x)
 # add a classifier
-predictions = Dense(class_num, activation='softmax')(x)
+# predictions = Dense(class_num, activation='softmax')(x)
 # Construct
-model = Model(inputs=base_model.input, outputs=predictions)
-
-# tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
+# model = Model(inputs=base_model.input, outputs=predictions)
+# base_model.save('E:/Model/AWA2/tfrecord/none/imagenet')
+# model = load_model('E:/Model/AWA2/tfrecord/none/imagenet')
+# tf.keras.utils.plot_model(base_model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
-model.compile(optimizer=SGD(lr=0.1, momentum=0.5, nesterov=False)
+model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
 STEP_SIZE_TRAIN = train_cardinality // train_batch_size + 1
@@ -238,7 +242,8 @@ model.fit(train_dataset,
           steps_per_epoch=STEP_SIZE_TRAIN,
           validation_data=val_dataset,
           validation_steps=STEP_SIZE_VALID,
-          callbacks=[model_checkpoint])
+          # callbacks=[model_checkpoint]
+          )
 # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step1_epoch{}.h5'.format(dataset, i))
 
 # for layer in model.layers[:335]:
