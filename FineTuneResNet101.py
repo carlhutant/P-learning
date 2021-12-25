@@ -34,7 +34,7 @@ preprocess = 'caffe'
 
 batch_size = 16
 train_dir = './data/{}/{}/train/'.format(dataset, datatype)
-val_dir = './data/{}/{}/val/'.format(dataset, datatype)
+val_dir = 'D:/Download/AWA2/IMG/val'
 IMG_SHAPE = 224
 
 epochs = 20
@@ -170,21 +170,21 @@ train_data_gen = crop_generator(
     seed=486
 )
 
-val_data_gen = crop_generator(
-    val_dir,
-    batch_size=batch_size,
-    crop_type="random",
-    crop_w=IMG_SHAPE,
-    crop_h=IMG_SHAPE,
-    resize_short_edge_max=480,
-    resize_short_edge_min=256,
-    shuffle=False,
-    color_mode="BGR",
-    seed=486
-)
+# val_data_gen = crop_generator(
+#     val_dir,
+#     batch_size=batch_size,
+#     crop_type="random",
+#     crop_w=IMG_SHAPE,
+#     crop_h=IMG_SHAPE,
+#     resize_short_edge_max=480,
+#     resize_short_edge_min=256,
+#     shuffle=False,
+#     color_mode="BGR",
+#     seed=486
+# )
 
 # a = next(train_data_gen)
-# image_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
+image_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
 # image_gen = ImageDataGenerator()
 # image_gen = ImageDataGenerator()
 # train_data_gen = image_gen.flow_from_directory(
@@ -199,14 +199,14 @@ val_data_gen = crop_generator(
 
 # image_gen_val = ImageDataGenerator(preprocessing_function=preprocess_input)
 # image_gen_val = ImageDataGenerator()
-# val_data_gen = image_gen.flow_from_directory(
-#     batch_size=batch_size,
-#     directory=val_dir,
-#     target_size=(IMG_SHAPE, IMG_SHAPE),
-#     class_mode='categorical',
-#     color_mode="rgb",
-#     seed=42
-# )
+val_data_gen = image_gen.flow_from_directory(
+    batch_size=batch_size,
+    directory=val_dir,
+    target_size=(IMG_SHAPE, IMG_SHAPE),
+    class_mode='categorical',
+    color_mode="rgb",
+    seed=42
+)
 
 # class_weights = class_weight.compute_class_weight(
 #            'balanced',
@@ -240,64 +240,64 @@ model = Model(inputs=base_model.input, outputs=predictions)
 # keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                            rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
-model.compile(optimizer=SGD(lr=0.1, decay=1e-4, momentum=0.9, nesterov=True)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-
-early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-
-STEP_SIZE_TRAIN = train_cardinality // batch_size
-STEP_SIZE_VALID = val_cardinality // batch_size
-
-model.save('./model/{}/{}_{}/ResNet101_step0.h5'.format(dataset, data_advance, datatype))
-
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
-                    )
-model.save('./model/{}/{}_{}/ResNet101_lr01.h5'.format(dataset, data_advance, datatype))
-
-epochs = 10
-model.compile(optimizer=SGD(lr=0.01, decay=1e-4, momentum=0.9, nesterov=True)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
-                    )
-model.save('./model/{}/{}_{}/ResNet101_lr001.h5'.format(dataset, data_advance, datatype))
-
-epochs = 10
-model.compile(optimizer=SGD(lr=0.001, decay=1e-4, momentum=0.9, nesterov=True)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
-                    )
-model.save('./model/{}/{}_{}/ResNet101_lr0001.h5'.format(dataset, data_advance, datatype))
-
-epochs = 10
-model.compile(optimizer=SGD(lr=0.0001, decay=1e-4, momentum=0.9, nesterov=True)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit_generator(train_data_gen,
-                    steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=epochs,
-                    validation_data=val_data_gen,
-                    validation_steps=STEP_SIZE_VALID,
-                    #                     class_weight=class_weights,
-                    callbacks=[early_stopping]
-                    )
-model.save('./model/{}/{}_{}/ResNet101_lr00001.h5'.format(dataset, data_advance, datatype))
+# model.compile(optimizer=SGD(lr=0.1, decay=1e-4, momentum=0.9, nesterov=True)
+#               , loss='categorical_crossentropy', metrics=['accuracy'])
+#
+# early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
+#
+# STEP_SIZE_TRAIN = train_cardinality // batch_size
+# STEP_SIZE_VALID = val_cardinality // batch_size
+#
+# model.save('./model/{}/{}_{}/ResNet101_step0.h5'.format(dataset, data_advance, datatype))
+#
+# model.fit_generator(train_data_gen,
+#                     steps_per_epoch=STEP_SIZE_TRAIN,
+#                     epochs=epochs,
+#                     validation_data=val_data_gen,
+#                     validation_steps=STEP_SIZE_VALID,
+#                     #                     class_weight=class_weights,
+#                     callbacks=[early_stopping]
+#                     )
+# model.save('./model/{}/{}_{}/ResNet101_lr01.h5'.format(dataset, data_advance, datatype))
+#
+# epochs = 10
+# model.compile(optimizer=SGD(lr=0.01, decay=1e-4, momentum=0.9, nesterov=True)
+#               , loss='categorical_crossentropy', metrics=['accuracy'])
+# model.fit_generator(train_data_gen,
+#                     steps_per_epoch=STEP_SIZE_TRAIN,
+#                     epochs=epochs,
+#                     validation_data=val_data_gen,
+#                     validation_steps=STEP_SIZE_VALID,
+#                     #                     class_weight=class_weights,
+#                     callbacks=[early_stopping]
+#                     )
+# model.save('./model/{}/{}_{}/ResNet101_lr001.h5'.format(dataset, data_advance, datatype))
+#
+# epochs = 10
+# model.compile(optimizer=SGD(lr=0.001, decay=1e-4, momentum=0.9, nesterov=True)
+#               , loss='categorical_crossentropy', metrics=['accuracy'])
+# model.fit_generator(train_data_gen,
+#                     steps_per_epoch=STEP_SIZE_TRAIN,
+#                     epochs=epochs,
+#                     validation_data=val_data_gen,
+#                     validation_steps=STEP_SIZE_VALID,
+#                     #                     class_weight=class_weights,
+#                     callbacks=[early_stopping]
+#                     )
+# model.save('./model/{}/{}_{}/ResNet101_lr0001.h5'.format(dataset, data_advance, datatype))
+#
+# epochs = 10
+# model.compile(optimizer=SGD(lr=0.0001, decay=1e-4, momentum=0.9, nesterov=True)
+#               , loss='categorical_crossentropy', metrics=['accuracy'])
+# model.fit_generator(train_data_gen,
+#                     steps_per_epoch=STEP_SIZE_TRAIN,
+#                     epochs=epochs,
+#                     validation_data=val_data_gen,
+#                     validation_steps=STEP_SIZE_VALID,
+#                     #                     class_weight=class_weights,
+#                     callbacks=[early_stopping]
+#                     )
+# model.save('./model/{}/{}_{}/ResNet101_lr00001.h5'.format(dataset, data_advance, datatype))
 
 # epochs = 10
 #
@@ -325,10 +325,10 @@ model.save('./model/{}/{}_{}/ResNet101_lr00001.h5'.format(dataset, data_advance,
 #
 # model.save('./model/{}/{}_{}/ResNet101_step2.h5'.format(dataset, data_advance, datatype))
 
-# # Evaluate
-# model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-#               , loss='categorical_crossentropy', metrics=['accuracy'])
-# # model.load_weights("./model/AWA2/FineTuneResNet101_edge_with_head.h5")
-# # STEP_SIZE_VALID = val_data_gen.n // val_data_gen.batch_size
-# score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
-# print(score)
+# Evaluate
+model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+              , loss='categorical_crossentropy', metrics=['accuracy'])
+model.load_weights("D:/Download/model/ResNet101_lr01.h5")
+STEP_SIZE_VALID = val_cardinality // batch_size
+score = model.evaluate_generator(generator=val_data_gen, steps=STEP_SIZE_VALID)
+print(score)
