@@ -24,11 +24,11 @@ dataset = 'imagenet'
 # datatype: img, tfrecord
 datatype = 'tfrecord'
 # data preprocess: color_diff_121, none
-preprocess = 'color_diff_121'
+preprocess = 'none'
 ##############################
 
 batch_size = 128
-dataset_directory = 'E:/Dataset/{}/{}/{}/'.format(dataset, datatype, preprocess)
+dataset_directory = 'F:/Dataset/{}/{}/{}/'.format(dataset, datatype, preprocess)
 IMG_SHAPE = 224
 train_cardinality = 0
 val_cardinality = 0
@@ -50,20 +50,21 @@ elif dataset == 'AWA2':
     class_num = 50
     seen_class_num = 40
     unseen_class_num = 10
-elif dataset == 'imagenet':
-    class_attr_shape = (85,)
-    class_attr_dim = 85
-    class_num = 1000
-    seen_class_num = 1000
-    unseen_class_num = 10
-    train_cardinality = 1281167
-    val_cardinality = 50000
+    file_type = '.jpg'
+    train_cardinality = 58176
+    val_cardinality = 15872
 elif dataset == 'plant':
     class_attr_shape = (46,)
     class_attr_dim = 46
     class_num = 38
     seen_class_num = 25
     unseen_class_num = 13
+elif dataset == 'imagenet':
+    class_num = 1000
+    seen_class_num = 1000
+    file_type = '.JPEG'
+    train_cardinality = 1281167
+    val_cardinality = 50000
 
 if preprocess == 'color_diff_121':
     IMG_channel = 6
@@ -147,24 +148,24 @@ val_dataset = val_dataset.batch(batch_size)
 # x = train_dataset.take(1)
 # a = 0
 # # Fine tune or Retrain ResNet101
-base_model = ResNet101(weights=None, include_top=False, input_shape=(224, 224, 6))
+model = ResNet101(weights='imagenet', include_top=True)
 
 # # lock the model
 # for layer in base_model.layers:
 #     layer.trainable = False
 
 # add a global averge pollinf layer
-x = base_model.output
-x = GlobalAveragePooling2D()(x)
+# x = base_model.output
+# x = GlobalAveragePooling2D()(x)
 
 # add a dense
 # x = Dense(2048, activation='relu')(x)
 
 # add a classifier
-predictions = Dense(seen_class_num, activation='softmax')(x)
+# predictions = Dense(seen_class_num, activation='softmax')(x)
 
 # Constructure
-model = Model(inputs=base_model.input, outputs=predictions)
+# model = Model(inputs=base_model.input, outputs=predictions)
 
 # compile
 # model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
@@ -179,13 +180,13 @@ STEP_SIZE_TRAIN = train_cardinality // batch_size
 STEP_SIZE_VALID = val_cardinality // batch_size
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-model.save('./model/{}/ImagenetResNet101_step0_epoch{}.h5'.format(dataset, 0))
+# model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step0_epoch{}.h5'.format(dataset, 0))
 epochs = 15
 for i in range(epochs):
     print("step 1 epoch {}:".format(i+1))
     model.fit(train_dataset, epochs=1, steps_per_epoch=STEP_SIZE_TRAIN, validation_data=val_dataset,
               validation_steps=STEP_SIZE_VALID, callbacks=[early_stopping])
-    model.save('./model/{}/ImagenetResNet101_step1_epoch{}.h5'.format(dataset, i))
+    # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step1_epoch{}.h5'.format(dataset, i))
 
 for layer in model.layers[:335]:
     layer.trainable = False
@@ -204,7 +205,7 @@ for i in range(epochs):
     print("step 2 epoch {}:".format(i+1))
     model.fit(train_dataset, epochs=1, steps_per_epoch=STEP_SIZE_TRAIN, validation_data=val_dataset,
               validation_steps=STEP_SIZE_VALID, callbacks=[early_stopping])
-    model.save('./model/{}/ImagenetResNet101_step2_epoch{}.h5'.format(dataset, i))
+    # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step2_epoch{}.h5'.format(dataset, i))
 
 # ## Evaluate
 # model.compile(optimizer=SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
