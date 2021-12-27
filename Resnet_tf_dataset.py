@@ -212,26 +212,32 @@ val_dataset = val_dataset.repeat()
 # import resnet
 # base_model = ResNet101(weights='imagenet', include_top=True)
 # model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
-model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-4/lr1e-4-ckpt-epoch0059_loss-0.0603_accuracy-0.9831_val_loss-4.1679_val_accuracy-0.7912')
+base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-1-ckpt-epoch0001_loss-3.4249_accuracy-0.1220_val_loss-3.6458_val_accuracy-0.1431')
+# model = Model(inputs=model.input, outputs=model.layers[-3].output)
 # add a global average pooling layer
-# x = base_model.output
-# x = GlobalAveragePooling2D()(x)
+x = base_model.layers[-3].output
+x = GlobalAveragePooling2D()(x)
 # add a classifier
-# predictions = Dense(class_num, activation='softmax')(x)
+predictions = Dense(class_num, activation='softmax')(x)
 # Construct
-# model = Model(inputs=base_model.input, outputs=predictions)
+model = Model(inputs=base_model.input, outputs=predictions)
 # base_model.save('E:/Model/AWA2/tfrecord/none/imagenet')
 # model = load_model('E:/Model/AWA2/tfrecord/none/imagenet')
 # tf.keras.utils.plot_model(base_model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
-model.compile(optimizer=SGD(learning_rate=0.00001, momentum=0.5, nesterov=False)
+model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
+
+for layer in model.layers[:-2]:
+    layer.trainable = False
+for layer in model.layers[-2:]:
+    layer.trainable = True
 
 STEP_SIZE_TRAIN = math.ceil(train_cardinality // train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality // val_batch_size)
 
-model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-4-ckpt-epoch{epoch:04d}'
+model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-x-ckpt-epoch{epoch:04d}'
                                    + '_loss-{loss:.4f}'
                                    + '_accuracy-{accuracy:.4f}'
                                    + '_val_loss-{val_loss:.4f}'
