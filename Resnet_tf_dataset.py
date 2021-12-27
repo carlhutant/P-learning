@@ -212,7 +212,7 @@ val_dataset = val_dataset.repeat()
 # import resnet
 # base_model = ResNet101(weights='imagenet', include_top=True)
 # model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
-base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-1-ckpt-epoch0001_loss-3.4249_accuracy-0.1220_val_loss-3.6458_val_accuracy-0.1431')
+base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-4/lr1e-4-ckpt-epoch0059_loss-0.0603_accuracy-0.9831_val_loss-4.1679_val_accuracy-0.7912')
 # model = Model(inputs=model.input, outputs=model.layers[-3].output)
 # add a global average pooling layer
 x = base_model.layers[-3].output
@@ -226,16 +226,19 @@ model = Model(inputs=base_model.input, outputs=predictions)
 # tf.keras.utils.plot_model(base_model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
-model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
-
 for layer in model.layers[:-2]:
     layer.trainable = False
 for layer in model.layers[-2:]:
     layer.trainable = True
 
+model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False)
+              , loss='categorical_crossentropy', metrics=['accuracy'])
+
 STEP_SIZE_TRAIN = math.ceil(train_cardinality // train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality // val_batch_size)
+
+# STEP_SIZE_TRAIN = 20
+# STEP_SIZE_VALID = 20
 
 model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-x-ckpt-epoch{epoch:04d}'
                                    + '_loss-{loss:.4f}'
@@ -247,16 +250,20 @@ model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-x-ckpt-epoch{epoch:04d}'
                                    verbose=0)
 # early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 
-epochs = 100
-# a = model.layers[-1].weights[0][0]
+epochs = 1
+
+a = model.layers[-1].weights[0][0]
+a2 = model.layers[-6].weights[0][0]
 model.fit(train_dataset,
           epochs=epochs,
           steps_per_epoch=STEP_SIZE_TRAIN,
           validation_data=val_dataset,
           validation_steps=STEP_SIZE_VALID,
-          callbacks=[model_checkpoint]
+          # callbacks=[model_checkpoint]
           )
-# b = model.layers[-1].weights[0][0]
+b = model.layers[-1].weights[0][0]
+b2 = model.layers[-6].weights[0][0]
+c = 0
 # model.compile(optimizer=SGD(learning_rate=0, momentum=0.5, nesterov=False)
 #               , loss='categorical_crossentropy', metrics=['accuracy'])
 #
