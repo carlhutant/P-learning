@@ -15,7 +15,7 @@ from tensorflow.keras import optimizers
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.applications.resnet import ResNet101, preprocess_input
 from tensorflow.keras.models import Model, load_model
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Input
 from tensorflow.keras import backend as K
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
@@ -133,7 +133,7 @@ def tmp_combine_6ch(feature, label, config):
 
 
 def img_to_2048(feature, label, config, model):
-    feature2048 = model.predict(feature)
+    feature2048 = model(feature)
     return feature2048, feature2048
 # physical_devices = tf.config.list_physical_devices('GPU')
 # try:
@@ -145,6 +145,15 @@ def img_to_2048(feature, label, config, model):
 # except:
 #     # Invalid device or cannot modify virtual devices once initialized.
 #     pass
+
+
+class CustomMSE(keras.losses.Loss):
+    def __init__(self, name="custom_mse"):
+        super().__init__(name=name)
+
+    def call(self, y_true, y_pred):
+        mse = tf.math.reduce_mean(tf.square(y_true - y_pred))
+        return mse
 
 
 train_config = {'crop_h': train_crop_h,
@@ -206,17 +215,17 @@ train_dataset = train_dataset.map(lambda img, label: img_to_2048(img, label, tra
 val_dataset = val_dataset.map(lambda img, label: img_to_2048(img, label, val_config, feature2048model))
 
 
-take = train_dataset.take(10)
-a = take.as_numpy_iterator()
-
-for _ in range(10):
-    b = next(a)
-    for i in range(train_batch_size):
-        c = b[0][i, ..., :3]
-        # c = c[..., [2, 1, 0]]
-        # sh = np.array(c, dtype=np.uint8)
-        # cv2.imshow('123', sh)
-        # cv2.waitKey()
+# take = train_dataset.take(10)
+# a = take.as_numpy_iterator()
+#
+# for _ in range(10):
+#     b = next(a)
+#     for i in range(train_batch_size):
+#         c = b[0][i, ..., :3]
+#         # c = c[..., [2, 1, 0]]
+#         # sh = np.array(c, dtype=np.uint8)
+#         # cv2.imshow('123', sh)
+#         # cv2.waitKey()
 
 # # Fine tune or Retrain ResNet101
 # import resnet
@@ -225,34 +234,31 @@ for _ in range(10):
 # base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-4/lr1e-4-ckpt-epoch0059_loss-0.0603_accuracy-0.9831_val_loss-4.1679_val_accuracy-0.7912')
 # model = Model(inputs=model.input, outputs=model.layers[-3].output)
 # add a global average pooling layer
-auto_encoder_input = base_model.layers[-2].output
+inputs = Input(shape=2048)
 # add a classifier
-x = Dense(2048, activation='relu')(auto_encoder_input)
+x = Dense(2048, activation='relu')(inputs)
 x = Dense(1024, activation='relu')(x)
 x = Dense(512, activation='relu')(x)
 x = Dense(256, activation='relu')(x)
 x = Dense(256, activation='relu')(x)
 x = Dense(512, activation='relu')(x)
 x = Dense(1024, activation='relu')(x)
-output = Dense(2048, activation='relu')(x)
+outputs = Dense(2048, activation='relu')(x)
 
 # Construct
-model = Model(inputs=base_model.input, outputs=output)
-
-reconstruction_loss = K.sum(K.mean((x_inputs - x_out)**2))
-
+model = Model(inputs=inputs, outputs=outputs)
 # base_model.save('E:/Model/AWA2/tfrecord/none/imagenet')
 # model = load_model('E:/Model/AWA2/tfrecord/none/imagenet')
 # tf.keras.utils.plot_model(base_model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
-
-for layer in model.layers[:-2]:
-    layer.trainable = False
-for layer in model.layers[-2:]:
-    layer.trainable = True
+#
+# for layer in model.layers[:-2]:
+#     layer.trainable = False
+# for layer in model.layers[-2:]:
+#     layer.trainable = True
 
 model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
+              , loss=CustomMSE(), metrics=['mse'])
 
 STEP_SIZE_TRAIN = math.ceil(train_cardinality // train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality // val_batch_size)
@@ -260,30 +266,23 @@ STEP_SIZE_VALID = math.ceil(val_cardinality // val_batch_size)
 # STEP_SIZE_TRAIN = 20
 # STEP_SIZE_VALID = 20
 
-model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-x-ckpt-epoch{epoch:04d}'
+model_checkpoint = ModelCheckpoint(ckpt_dir + '/ae/lr1e-1-ckpt-epoch{epoch:04d}'
                                    + '_loss-{loss:.4f}'
-                                   + '_accuracy-{accuracy:.4f}'
-                                   + '_val_loss-{val_loss:.4f}'
-                                   + '_val_accuracy-{val_accuracy:.4f}',
+                                   + '_val_loss-{val_loss:.4f}',
                                    save_weights_only=False,
                                    save_freq='epoch',
                                    verbose=0)
 # early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 
-epochs = 1
+epochs = 100
 
-a = model.layers[-1].weights[0][0]
-a2 = model.layers[-6].weights[0][0]
 model.fit(train_dataset,
           epochs=epochs,
           steps_per_epoch=STEP_SIZE_TRAIN,
           validation_data=val_dataset,
           validation_steps=STEP_SIZE_VALID,
-          # callbacks=[model_checkpoint]
+          callbacks=[model_checkpoint]
           )
-b = model.layers[-1].weights[0][0]
-b2 = model.layers[-6].weights[0][0]
-c = 0
 # model.compile(optimizer=SGD(learning_rate=0, momentum=0.5, nesterov=False)
 #               , loss='categorical_crossentropy', metrics=['accuracy'])
 #
