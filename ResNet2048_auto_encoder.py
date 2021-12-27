@@ -135,6 +135,10 @@ def tmp_combine_6ch(feature, label, config):
 def img_to_2048(feature, label, config, model):
     feature2048 = model(feature)
     return feature2048, feature2048
+
+
+def feature_only(feature, label):
+    return feature
 # physical_devices = tf.config.list_physical_devices('GPU')
 # try:
 #     # Disable first GPU
@@ -147,12 +151,17 @@ def img_to_2048(feature, label, config, model):
 #     pass
 
 
+def custom_loss(x_in, x_out):
+    mse = tf.math.reduce_mean(tf.square(x_out - x_in))
+    return mse
+
+
 class CustomMSE(keras.losses.Loss):
     def __init__(self, name="custom_mse"):
         super().__init__(name=name)
 
-    def call(self, y_true, y_pred):
-        mse = tf.math.reduce_mean(tf.square(y_true - y_pred))
+    def call(self, y):
+        mse = tf.math.reduce_mean(tf.square(y[1] - y[0]))
         return mse
 
 
@@ -208,16 +217,18 @@ val_dataset = val_dataset.batch(val_batch_size)
 train_dataset = train_dataset.repeat()
 val_dataset = val_dataset.repeat()
 
-base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-4/lr1e-4-ckpt-epoch0059_loss-0.0603_accuracy-0.9831_val_loss-4.1679_val_accuracy-0.7912')
-feature2048model = Model(inputs=base_model.input, outputs=base_model.layers[-2].output)
+# base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-4/lr1e-4-ckpt-epoch0059_loss-0.0603_accuracy-0.9831_val_loss-4.1679_val_accuracy-0.7912')
+# feature2048model = Model(inputs=base_model.input, outputs=base_model.layers[-2].output)
 
-train_dataset = train_dataset.map(lambda img, label: img_to_2048(img, label, train_config, feature2048model))
-val_dataset = val_dataset.map(lambda img, label: img_to_2048(img, label, val_config, feature2048model))
+# train_dataset = train_dataset.map(lambda img, label: img_to_2048(img, label, train_config, feature2048model))
+# val_dataset = val_dataset.map(lambda img, label: img_to_2048(img, label, val_config, feature2048model))
 
+train_dataset = train_dataset.map(feature_only)
+val_dataset = val_dataset.map(feature_only)
 
-# take = train_dataset.take(10)
-# a = take.as_numpy_iterator()
-#
+take = train_dataset.take(10)
+a = take.as_numpy_iterator()
+
 # for _ in range(10):
 #     b = next(a)
 #     for i in range(train_batch_size):
@@ -231,34 +242,35 @@ val_dataset = val_dataset.map(lambda img, label: img_to_2048(img, label, val_con
 # import resnet
 # base_model = ResNet101(weights='imagenet', include_top=True)
 # model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
-# base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-4/lr1e-4-ckpt-epoch0059_loss-0.0603_accuracy-0.9831_val_loss-4.1679_val_accuracy-0.7912')
+base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-4/lr1e-4-ckpt-epoch0059_loss-0.0603_accuracy-0.9831_val_loss-4.1679_val_accuracy-0.7912')
 # model = Model(inputs=model.input, outputs=model.layers[-3].output)
 # add a global average pooling layer
-inputs = Input(shape=2048)
+# inputs = Input(shape=2048)
 # add a classifier
-x = Dense(2048, activation='relu')(inputs)
-x = Dense(1024, activation='relu')(x)
-x = Dense(512, activation='relu')(x)
-x = Dense(256, activation='relu')(x)
-x = Dense(256, activation='relu')(x)
-x = Dense(512, activation='relu')(x)
-x = Dense(1024, activation='relu')(x)
-outputs = Dense(2048, activation='relu')(x)
+x = Dense(2048, activation='relu', name='ae1')(base_model.layers[-2].output)
+x = Dense(1024, activation='relu', name='ae2')(x)
+x = Dense(512, activation='relu', name='ae3')(x)
+x = Dense(256, activation='relu', name='ae4')(x)
+x = Dense(256, activation='relu', name='ae5')(x)
+x = Dense(512, activation='relu', name='ae6')(x)
+x = Dense(1024, activation='relu', name='ae7')(x)
+outputs = Dense(2048, activation='relu', name='ae8')(x)
 
 # Construct
-model = Model(inputs=inputs, outputs=outputs)
+model = Model(inputs=base_model.input, outputs=[base_model.layers[-2].output, outputs])
 # base_model.save('E:/Model/AWA2/tfrecord/none/imagenet')
 # model = load_model('E:/Model/AWA2/tfrecord/none/imagenet')
 # tf.keras.utils.plot_model(base_model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 #
-# for layer in model.layers[:-2]:
-#     layer.trainable = False
-# for layer in model.layers[-2:]:
-#     layer.trainable = True
-
+for layer in model.layers[:-8]:
+    layer.trainable = False
+for layer in model.layers[-8:]:
+    layer.trainable = True
+model.add_loss(custom_loss(base_model.layers[-2].output, outputs))
+model.add_metric(custom_loss(base_model.layers[-2].output, outputs), name='mse')
 model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False)
-              , loss=CustomMSE(), metrics=['mse'])
+              , loss=None, metrics=None)
 
 STEP_SIZE_TRAIN = math.ceil(train_cardinality // train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality // val_batch_size)
