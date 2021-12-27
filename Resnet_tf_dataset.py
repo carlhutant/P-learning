@@ -212,7 +212,7 @@ val_dataset = val_dataset.repeat()
 # import resnet
 # base_model = ResNet101(weights='imagenet', include_top=True)
 # model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
-model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-3/lr1e-3-ckpt-epoch0055_loss-0.0584_accuracy-0.9843_val_loss-3.8894_val_accuracy-0.7927')
+model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-4/lr1e-4-ckpt-epoch0059_loss-0.0603_accuracy-0.9831_val_loss-4.1679_val_accuracy-0.7912')
 # add a global average pooling layer
 # x = base_model.output
 # x = GlobalAveragePooling2D()(x)
@@ -225,7 +225,7 @@ model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-3/lr1e-3-ckpt-epoch0
 # tf.keras.utils.plot_model(base_model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
-model.compile(optimizer=SGD(learning_rate=0.0001, momentum=0.5, nesterov=False)
+model.compile(optimizer=SGD(learning_rate=0.00001, momentum=0.5, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
 STEP_SIZE_TRAIN = math.ceil(train_cardinality // train_batch_size)
