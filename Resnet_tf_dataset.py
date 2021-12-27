@@ -23,7 +23,6 @@ from configure import *
 from pathlib import Path
 
 
-
 def tf_parse(raw_example):
     example = tf.io.parse_example(
         raw_example[tf.newaxis], {
@@ -207,7 +206,7 @@ val_dataset = val_dataset.repeat()
 # # Fine tune or Retrain ResNet101
 # import resnet
 # base_model = ResNet101(weights='imagenet', include_top=True)
-model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
+# model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
 # add a global average pooling layer
 # x = base_model.output
 # x = GlobalAveragePooling2D()(x)
@@ -216,15 +215,17 @@ model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
 # Construct
 # model = Model(inputs=base_model.input, outputs=predictions)
 # base_model.save('E:/Model/AWA2/tfrecord/none/imagenet')
-# model = load_model('E:/Model/AWA2/tfrecord/none/imagenet')
+model = load_model('E:/Model/AWA2/tfrecord/none/lr1e-1-ckpt-epoch0001_loss-3.4249_accuracy-0.1220_val_loss-3.6458_val_accuracy-0.1431')
 # tf.keras.utils.plot_model(base_model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
-model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False)
+model.compile(optimizer=SGD(learning_rate=0, momentum=0.5, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
 STEP_SIZE_TRAIN = train_cardinality // train_batch_size + 1
 STEP_SIZE_VALID = val_cardinality // val_batch_size + 1
+STEP_SIZE_TRAIN = 10
+STEP_SIZE_VALID = 10
 
 model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-1-ckpt-epoch{epoch:04d}'
                                    + '_loss-{loss:.4f}'
@@ -235,8 +236,8 @@ model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-1-ckpt-epoch{epoch:04d}'
                                    save_freq='epoch',
                                    verbose=0)
 # early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-
-epochs = 5
+a = model.layers[-1].weights[0][0]
+epochs = 1
 model.fit(train_dataset,
           epochs=epochs,
           steps_per_epoch=STEP_SIZE_TRAIN,
@@ -244,6 +245,19 @@ model.fit(train_dataset,
           validation_steps=STEP_SIZE_VALID,
           # callbacks=[model_checkpoint]
           )
+b = model.layers[-1].weights[0][0]
+model.compile(optimizer=SGD(learning_rate=0.001, momentum=0.5, nesterov=False)
+              , loss='categorical_crossentropy', metrics=['accuracy'])
+epochs = 1
+model.fit(train_dataset,
+          epochs=epochs,
+          steps_per_epoch=STEP_SIZE_TRAIN,
+          validation_data=val_dataset,
+          validation_steps=STEP_SIZE_VALID,
+          # callbacks=[model_checkpoint]
+          )
+c = model.layers[-1].weights[0][0]
+c = 0
 # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step1_epoch{}.h5'.format(dataset, i))
 
 # for layer in model.layers[:335]:
