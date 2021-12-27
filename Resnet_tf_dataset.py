@@ -5,6 +5,9 @@ import numpy as np
 import cv2
 import random
 import math
+
+import tensorflow.keras.models
+
 import ResnetDIY
 
 from tensorflow import keras
@@ -156,8 +159,9 @@ val_config = {'crop_h': val_crop_h,
 
 tf.random.set_seed(seed=random_seed)
 train_files_list = tf.data.Dataset.list_files(str(Path(train_dir).parent.joinpath('train.tfrecord*')))
-val_files_list = tf.data.Dataset.list_files(
-    str(Path(val_dir).parent.parent.joinpath('color_sw_RBG').joinpath('val.tfrecord*')))
+val_files_list = tf.data.Dataset.list_files(str(Path(val_dir).parent.joinpath('val.tfrecord*')))
+# val_files_list = tf.data.Dataset.list_files(
+#     str(Path(val_dir).parent.parent.joinpath('color_sw_RBG').joinpath('val.tfrecord*')))
 # for f in train_files_list.take(5):
 #     print(f.numpy())
 train_dataset = tf.data.TFRecordDataset(train_files_list)
@@ -207,7 +211,8 @@ val_dataset = val_dataset.repeat()
 # # Fine tune or Retrain ResNet101
 # import resnet
 # base_model = ResNet101(weights='imagenet', include_top=True)
-model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
+# model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
+model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-3/lr1e-3-ckpt-epoch0055_loss-0.0584_accuracy-0.9843_val_loss-3.8894_val_accuracy-0.7927')
 # add a global average pooling layer
 # x = base_model.output
 # x = GlobalAveragePooling2D()(x)
@@ -220,13 +225,13 @@ model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
 # tf.keras.utils.plot_model(base_model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
-model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False)
+model.compile(optimizer=SGD(learning_rate=0.0001, momentum=0.5, nesterov=False)
               , loss='categorical_crossentropy', metrics=['accuracy'])
 
-STEP_SIZE_TRAIN = train_cardinality // train_batch_size + 1
-STEP_SIZE_VALID = val_cardinality // val_batch_size + 1
+STEP_SIZE_TRAIN = math.ceil(train_cardinality // train_batch_size)
+STEP_SIZE_VALID = math.ceil(val_cardinality // val_batch_size)
 
-model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-1-ckpt-epoch{epoch:04d}'
+model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-4-ckpt-epoch{epoch:04d}'
                                    + '_loss-{loss:.4f}'
                                    + '_accuracy-{accuracy:.4f}'
                                    + '_val_loss-{val_loss:.4f}'
@@ -236,14 +241,28 @@ model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-1-ckpt-epoch{epoch:04d}'
                                    verbose=0)
 # early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 
-epochs = 5
+epochs = 100
+# a = model.layers[-1].weights[0][0]
 model.fit(train_dataset,
           epochs=epochs,
           steps_per_epoch=STEP_SIZE_TRAIN,
           validation_data=val_dataset,
           validation_steps=STEP_SIZE_VALID,
-          # callbacks=[model_checkpoint]
+          callbacks=[model_checkpoint]
           )
+# b = model.layers[-1].weights[0][0]
+# model.compile(optimizer=SGD(learning_rate=0, momentum=0.5, nesterov=False)
+#               , loss='categorical_crossentropy', metrics=['accuracy'])
+#
+# model.fit(train_dataset,
+#           epochs=epochs,
+#           steps_per_epoch=STEP_SIZE_TRAIN,
+#           validation_data=val_dataset,
+#           validation_steps=STEP_SIZE_VALID,
+#           # callbacks=[model_checkpoint]
+#           )
+# c = model.layers[-1].weights[0][0]
+# c = 0
 # model.save('./model/{}/none_finetune_tfrecord/ResNet101_none_step1_epoch{}.h5'.format(dataset, i))
 
 # for layer in model.layers[:335]:
