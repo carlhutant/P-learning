@@ -26,7 +26,6 @@ from configure import *
 from pathlib import Path
 
 
-
 def tf_parse(raw_example):
     example = tf.io.parse_example(
         raw_example[tf.newaxis], {
@@ -106,8 +105,19 @@ def color_diff_121(img):
     return diff
 
 
+def resnet_caffe_preprocessing_rbg(feature, label):
+    a = np.array([123.68, 116.779, 103.939])
+    a = a[[0, 2, 1]]
+    imagenet_mean = tf.constant(a, dtype=tf.float32)
+    feature = tf.subtract(feature, imagenet_mean)
+    return feature, label
+
+
 def resnet_caffe_preprocessing(feature, label):
-    imagenet_mean = tf.constant([123.68, 116.779, 103.939], dtype=tf.float32)
+    a = np.array([123.68, 116.779, 103.939])
+    if data_advance == 'color_sw_RBG':
+        a = a[[0, 2, 1]]
+    imagenet_mean = tf.constant(a, dtype=tf.float32)
     feature = tf.subtract(feature, imagenet_mean)
     return feature, label
 
@@ -179,10 +189,11 @@ val_config = {'crop_h': val_crop_h,
               }
 
 tf.random.set_seed(seed=random_seed)
-train_files_list = tf.data.Dataset.list_files(str(Path(train_dir).parent.joinpath('train.tfrecord*')))
+# train_files_list = tf.data.Dataset.list_files(str(Path(train_dir).parent.joinpath('train.tfrecord*')))
 val_files_list = tf.data.Dataset.list_files(str(Path(val_dir).parent.joinpath('val.tfrecord*')))
-# val_files_list = tf.data.Dataset.list_files(
-#     str(Path(val_dir).parent.parent.joinpath('color_sw_RBG').joinpath('val.tfrecord*')))
+# val_files_list = tf.data.Dataset.list_files(str(Path(val_dir).parent.joinpath('val.tfrecord*')))
+train_files_list = tf.data.Dataset.list_files(
+    str(Path(val_dir).parent.parent.joinpath('color_sw_RBG').joinpath('val.tfrecord*')))
 # for f in train_files_list.take(5):
 #     print(f.numpy())
 train_dataset = tf.data.TFRecordDataset(train_files_list)
@@ -217,18 +228,12 @@ val_dataset = val_dataset.batch(val_batch_size)
 train_dataset = train_dataset.repeat()
 val_dataset = val_dataset.repeat()
 
-# base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-4/lr1e-4-ckpt-epoch0059_loss-0.0603_accuracy-0.9831_val_loss-4.1679_val_accuracy-0.7912')
-# feature2048model = Model(inputs=base_model.input, outputs=base_model.layers[-2].output)
-
-# train_dataset = train_dataset.map(lambda img, label: img_to_2048(img, label, train_config, feature2048model))
-# val_dataset = val_dataset.map(lambda img, label: img_to_2048(img, label, val_config, feature2048model))
-
 train_dataset = train_dataset.map(feature_only)
 val_dataset = val_dataset.map(feature_only)
 
-take = train_dataset.take(10)
-a = take.as_numpy_iterator()
-
+# take = train_dataset.take(10)
+# a = take.as_numpy_iterator()
+#
 # for _ in range(10):
 #     b = next(a)
 #     for i in range(train_batch_size):
@@ -242,43 +247,48 @@ a = take.as_numpy_iterator()
 # import resnet
 # base_model = ResNet101(weights='imagenet', include_top=True)
 # model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
-base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-4/lr1e-4-ckpt-epoch0059_loss-0.0603_accuracy-0.9831_val_loss-4.1679_val_accuracy-0.7912')
+# base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-1/lr1e-1-ckpt-epoch0278_loss-0.0835_accuracy-0.9747_val_loss-3.1642_val_accuracy-0.7815')
 # model = Model(inputs=model.input, outputs=model.layers[-3].output)
 # add a global average pooling layer
 # inputs = Input(shape=2048)
 # add a classifier
-x = Dense(2048, activation='relu', name='ae1')(base_model.layers[-2].output)
-x = Dense(1024, activation='relu', name='ae2')(x)
-x = Dense(512, activation='relu', name='ae3')(x)
-x = Dense(256, activation='relu', name='ae4')(x)
-x = Dense(256, activation='relu', name='ae5')(x)
-x = Dense(512, activation='relu', name='ae6')(x)
-x = Dense(1024, activation='relu', name='ae7')(x)
-outputs = Dense(2048, activation='relu', name='ae8')(x)
+# x = Dense(2048, activation='relu')(base_model.layers[-2].output)
+# x = Dense(1024, activation='relu')(x)
+# x = Dense(512, activation='relu')(x)
+# x = Dense(256, activation='relu')(x)
+# x = Dense(128, activation='relu')(x)
+# x = Dense(128, activation='relu')(x)
+# x = Dense(256, activation='relu')(x)
+# x = Dense(512, activation='relu')(x)
+# x = Dense(1024, activation='relu')(x)
+# outputs = Dense(2048, activation='relu')(x)
 
 # Construct
-model = Model(inputs=base_model.input, outputs=[base_model.layers[-2].output, outputs])
+# model = Model(inputs=base_model.input, outputs=[base_model.layers[-2].output, outputs])
 # base_model.save('E:/Model/AWA2/tfrecord/none/imagenet')
 # model = load_model('E:/Model/AWA2/tfrecord/none/imagenet')
-# tf.keras.utils.plot_model(base_model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
-#                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
-#
-for layer in model.layers[:-8]:
+# tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True, rankdir="TB", expand_nested=False, dpi=96)
+
+model = tensorflow.keras.models.load_model(ckpt_dir + 'ae_128/lr1e-3-ckpt-epoch0099_loss-0.1555_val_loss-0.0981')
+for layer in model.layers:
     layer.trainable = False
-for layer in model.layers[-8:]:
-    layer.trainable = True
-model.add_loss(custom_loss(base_model.layers[-2].output, outputs))
-model.add_metric(custom_loss(base_model.layers[-2].output, outputs), name='mse')
-model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False)
+# for layer in model.layers[:-10]:
+#     layer.trainable = False
+# for layer in model.layers[-10:]:
+#     layer.trainable = True
+# model.add_loss(custom_loss(base_model.layers[-2].output, outputs))
+# model.add_metric(custom_loss(base_model.layers[-2].output, outputs), name='mse')
+model.compile(optimizer=SGD(learning_rate=0.001, momentum=0.5, nesterov=True)
               , loss=None, metrics=None)
 
-STEP_SIZE_TRAIN = math.ceil(train_cardinality // train_batch_size)
+# STEP_SIZE_TRAIN = math.ceil(train_cardinality // train_batch_size)
+STEP_SIZE_TRAIN = math.ceil(val_cardinality // val_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality // val_batch_size)
 
-# STEP_SIZE_TRAIN = 20
-# STEP_SIZE_VALID = 20
+# STEP_SIZE_TRAIN = 1
+# STEP_SIZE_VALID = 1
 
-model_checkpoint = ModelCheckpoint(ckpt_dir + '/ae/lr1e-1-ckpt-epoch{epoch:04d}'
+model_checkpoint = ModelCheckpoint(ckpt_dir + '/ae_128/lr1e-3-ckpt-epoch{epoch:04d}'
                                    + '_loss-{loss:.4f}'
                                    + '_val_loss-{val_loss:.4f}',
                                    save_weights_only=False,
@@ -286,15 +296,19 @@ model_checkpoint = ModelCheckpoint(ckpt_dir + '/ae/lr1e-1-ckpt-epoch{epoch:04d}'
                                    verbose=0)
 # early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 
-epochs = 100
-
+epochs = 20
+a = model.layers[-9].weights[0][0]
 model.fit(train_dataset,
           epochs=epochs,
           steps_per_epoch=STEP_SIZE_TRAIN,
           validation_data=val_dataset,
           validation_steps=STEP_SIZE_VALID,
-          callbacks=[model_checkpoint]
+          # callbacks=[model_checkpoint]
           )
+b = model.layers[-9].weights[0][0]
+print(model.layers[-9].name)
+print(a == b)
+c = 0
 # model.compile(optimizer=SGD(learning_rate=0, momentum=0.5, nesterov=False)
 #               , loss='categorical_crossentropy', metrics=['accuracy'])
 #
