@@ -1,8 +1,0 @@
-FineTuneResNet101.ipynb
-Make_2048Features&Attr.ipynb data to 2048 data
-P_Learning.ipynb
-ft fintune
-b attribute 0 1
-c continue
-cmm min max 標準化
-cms mean 標準化 https://aifreeblog.herokuapp.com/posts/54/data_science_203/

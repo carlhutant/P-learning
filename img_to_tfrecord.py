@@ -16,13 +16,13 @@ from configure import *
 multiprocess = False
 process_num = 1
 split_instance_num = 353
-dataset = 'AWA2'
+dataset = 'AWA1'
 origin_datatype = 'img'
 result_datatype = 'tfrecord'  # img, tfrecord, npy
 # color_diff_121, color_diff_121_abs_3ch, color_diff_121_abs, none, color_sw_GBR, color_diff_121_abs_3ch
-origin_data_advance = 'color_sw_RBG'
-result_data_advance = 'color_sw_RBG'
-data_usage = 'train'  # data usage: train, val, test
+origin_data_advance = 'none'
+result_data_advance = 'none'
+data_usage = 'val'  # data usage: train, val, test
 
 target_directory = Path('{}/{}/{}/{}/{}/'.format(dataset_dir, dataset, origin_datatype, origin_data_advance, data_usage))
 result_directory = Path('{}/{}/{}/{}/'.format(dataset_dir, dataset, result_datatype, result_data_advance))
@@ -35,6 +35,9 @@ if dataset == 'AWA2':
 elif dataset == 'imagenet':
     file_type = '.JPEG'
     class_num = 1000
+elif dataset == 'AWA1':
+    file_type = '.jpg'
+    class_num = 3
 else:
     file_type = 'none'
     class_num = -1

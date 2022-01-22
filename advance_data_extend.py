@@ -169,10 +169,12 @@ if __name__ == "__main__":
     root, directory, _ = next(walk_generator)
     class_num = len(directory)
     instance_list = []
+    directory.sort()
     for d in directory:
         print(d, class_count)
         walk_generator2 = os.walk(Path(root).joinpath(d))
         flies_root, _, files = next(walk_generator2)
+        files.sort()
         for file in files:
             if file.endswith(file_type):
                 instance_list.append({'path': Path(flies_root).joinpath(file), 'label': class_count})
