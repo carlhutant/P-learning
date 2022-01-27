@@ -19,3 +19,9 @@ class ClassNameIndexMap:
 
     def name(self, index):
         return self.index[index]
+
+    def name_list(self):
+        name_list = []
+        for i in range(configure.class_num):
+            name_list.append(self.index[i])
+        return name_list
