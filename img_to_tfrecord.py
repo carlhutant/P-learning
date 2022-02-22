@@ -16,7 +16,7 @@ from configure import *
 multiprocess = False
 process_num = 1
 split_instance_num = 353
-dataset = 'AWA1'
+dataset = 'AWA'
 origin_datatype = 'img'
 result_datatype = 'tfrecord'  # img, tfrecord, npy
 # color_diff_121, color_diff_121_abs_3ch, color_diff_121_abs, none, color_sw_GBR, color_diff_121_abs_3ch

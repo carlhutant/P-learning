@@ -23,7 +23,7 @@ result_datatype = 'tfrecord'  # img, tfrecord, npy
 # color_diff_121, color_diff_121_abs_3ch, color_diff_121_abs, none, color_sw_GBR, color_diff_121_abs_3ch
 origin_data_advance = 'none'
 result_data_advance = 'none'
-data_usage = 'val'  # data usage: train, val, test
+data_usage = 'train'  # data usage: train, val, test
 
 dataset_dir = configure.dataset_dir
 target_directory = Path('{}/{}/{}/{}/{}/'.format(dataset_dir, dataset, origin_datatype, origin_data_advance, data_usage))
