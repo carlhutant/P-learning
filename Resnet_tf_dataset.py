@@ -113,6 +113,22 @@ def resnet_caffe_preprocessing_rbg(feature, label):
     return feature, label
 
 
+def diy_normalizing(feature, label):
+    if data_advance == 'none':
+        mean = np.array([119.09687091, 119.04670833, 100.78114277])
+        std = np.array([55.85246336, 54.56388751, 54.51621827])
+    elif data_advance == 'color_diff_121_abs_3ch':
+        mean = np.array([11.03982951, 10.86760973, 10.90499236])
+        std = np.array([11.97321782, 11.92262023, 11.88327279])
+    else:
+        raise RuntimeError
+    awa2_mean = tf.constant(mean, dtype=tf.float32)
+    awa2_std = tf.constant(std, dtype=tf.float32)
+    feature = tf.subtract(feature, awa2_mean)
+    feature = tf.divide(feature, awa2_std)
+    return feature, label
+
+
 def resnet_caffe_preprocessing(feature, label):
     a = np.array([123.68, 116.779, 103.939])
     if data_advance == 'color_sw_RBG':
@@ -191,8 +207,8 @@ train_dataset = train_dataset.map(example_parse_decode)
 val_dataset = val_dataset.map(example_parse_decode)
 train_dataset = train_dataset.map(lambda img, label: random_crop(img, label, train_config))
 val_dataset = val_dataset.map(lambda img, label: random_crop(img, label, val_config))
-train_dataset = train_dataset.map(resnet_caffe_preprocessing)
-val_dataset = val_dataset.map(resnet_caffe_preprocessing)
+train_dataset = train_dataset.map(diy_normalizing)
+val_dataset = val_dataset.map(diy_normalizing)
 
 # train_dataset = train_dataset.map(lambda img, label: random_plus2_crop(img, label, train_config))
 # val_dataset = val_dataset.map(lambda img, label: random_plus2_crop(img, label, val_config))

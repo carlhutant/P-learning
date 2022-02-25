@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 # Dataset config #
-dataset = 'AWA2'  # AWA2, imagenet
+dataset = 'imagenet'  # AWA2, imagenet
 datatype = 'img'  # img, tfrecord, npy
 data_advance = 'none'   # color_diff_121, none, color_diff_121_abs
 data_usage = 'train'
