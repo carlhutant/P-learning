@@ -81,7 +81,7 @@ def random_plus2_crop(img, label, config):
     return crop, label
 
 
-def color_diff_121(img):
+def color_diff_121_abs_3ch(img):
     shape = tf.shape(img)
     img = tf.expand_dims(img, 0)
     filter_h = np.array([
@@ -129,6 +129,32 @@ def diy_normalizing(feature, label):
     return feature, label
 
 
+def diy_normalizing_multi_domain(feature):
+    if data_advance == 'none':
+        mean1 = np.array([119.09687091, 119.04670833, 100.78114277])
+        std1 = np.array([55.85246336, 54.56388751, 54.51621827])
+    elif data_advance == 'color_diff_121_abs_3ch':
+        mean1 = np.array([11.03982951, 10.86760973, 10.90499236])
+        std1 = np.array([11.97321782, 11.92262023, 11.88327279])
+    else:
+        raise RuntimeError
+    if data_advance2 == 'none':
+        mean2 = np.array([119.09687091, 119.04670833, 100.78114277])
+        std2 = np.array([55.85246336, 54.56388751, 54.51621827])
+    elif data_advance2 == 'color_diff_121_abs_3ch':
+        mean2 = np.array([11.03982951, 10.86760973, 10.90499236])
+        std2 = np.array([11.97321782, 11.92262023, 11.88327279])
+    else:
+        raise RuntimeError
+    mean = np.concatenate((mean1, mean2), axis=0)
+    std = np.concatenate((std1, std2), axis=0)
+    awa2_mean = tf.constant(mean, dtype=tf.float32)
+    awa2_std = tf.constant(std, dtype=tf.float32)
+    feature = tf.subtract(feature, awa2_mean)
+    feature = tf.divide(feature, awa2_std)
+    return feature
+
+
 def resnet_caffe_preprocessing(feature, label):
     a = np.array([123.68, 116.779, 103.939])
     if data_advance == 'color_sw_RBG':
@@ -150,11 +176,13 @@ def resnet_0_1_preprocessing(feature, label):
 
 
 def tmp_combine_6ch(feature, label, config):
-    diff = color_diff_121(feature)
+    if data_advance != 'none' or data_advance2 != 'color_diff_121_abs_3ch':
+        raise RuntimeError
+    diff = color_diff_121_abs_3ch(feature)
     diff = tf.slice(diff, [1, 1, 0], [config['crop_h'], config['crop_w'], config['channel']])
     feature = tf.slice(feature, [1, 1, 0], [config['crop_h'], config['crop_w'], config['channel']])
-    # feature, _ = resnet_0_1_preprocessing(feature, label)
     feature = tf.concat([feature, diff], 2)
+    feature = diy_normalizing_multi_domain(feature)
     return feature, label
 
 
@@ -205,10 +233,12 @@ train_dataset.apply(tf.data.experimental.assert_cardinality(train_cardinality))
 val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
 train_dataset = train_dataset.map(example_parse_decode)
 val_dataset = val_dataset.map(example_parse_decode)
-train_dataset = train_dataset.map(lambda img, label: random_crop(img, label, train_config))
-val_dataset = val_dataset.map(lambda img, label: random_crop(img, label, val_config))
-train_dataset = train_dataset.map(diy_normalizing)
-val_dataset = val_dataset.map(diy_normalizing)
+train_dataset = train_dataset.map(lambda img, label: random_plus2_crop(img, label, train_config))
+val_dataset = val_dataset.map(lambda img, label: random_plus2_crop(img, label, val_config))
+train_dataset = train_dataset.map(lambda img, label: tmp_combine_6ch(img, label, train_config))
+val_dataset = val_dataset.map(lambda img, label: tmp_combine_6ch(img, label, val_config))
+# train_dataset = train_dataset.map(diy_normalizing)
+# val_dataset = val_dataset.map(diy_normalizing)
 
 # train_dataset = train_dataset.map(lambda img, label: random_plus2_crop(img, label, train_config))
 # val_dataset = val_dataset.map(lambda img, label: random_plus2_crop(img, label, val_config))
@@ -232,12 +262,16 @@ val_dataset = val_dataset.repeat()
 #         c = c[..., [2, 1, 0]]
 #         sh = np.array(c, dtype=np.uint8)
 #         cv2.imshow('123', sh)
+#         c2 = b[0][i, ..., 3:]
+#         c2 = c2[..., [2, 1, 0]]
+#         sh = np.array(c2, dtype=np.uint8)
+#         cv2.imshow('321', sh)
 #         cv2.waitKey()
 
 # # Fine tune or Retrain ResNet101
 # import resnet
 # base_model = ResNet101(weights='imagenet', include_top=True)
-model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
+model = ResnetDIY.resnet101_3_3(class_num=class_num, channel=channel)
 # base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-4/lr1e-4-ckpt-epoch0059_loss-0.0603_accuracy-0.9831_val_loss-4.1679_val_accuracy-0.7912')
 # model = Model(inputs=model.input, outputs=model.layers[-3].output)
 # add a global average pooling layer
@@ -249,8 +283,8 @@ model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
 # model = Model(inputs=base_model.input, outputs=predictions)
 # base_model.save('E:/Model/AWA2/tfrecord/none/imagenet')
 # model = load_model('E:/Model/AWA2/tfrecord/none/imagenet')
-# tf.keras.utils.plot_model(base_model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
-#                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
+tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
+                          rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 # for layer in model.layers[:-2]:
 #     layer.trainable = False

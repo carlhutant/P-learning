@@ -1,6 +1,6 @@
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Dense, GlobalAveragePooling2D, Conv2D, BatchNormalization, ReLU
-from tensorflow.keras.layers import MaxPool2D, Add
+from tensorflow.keras.layers import Input, Dense, GlobalAveragePooling2D, Conv2D, BatchNormalization, ReLU, Concatenate
+from tensorflow.keras.layers import MaxPool2D, Add, Dropout
 from tensorflow.keras import Model
 
 
@@ -56,6 +56,35 @@ def resnet101(class_num: int, channel: int):
     x = GlobalAveragePooling2D()(x)
     Outputs = Dense(units=class_num, activation='softmax')(x)
     model = Model(inputs=Inputs, outputs=Outputs)
+    return model
+
+
+def resnet101_3_3(class_num: int, channel: int):
+    inputs = Input(shape=(224, 224, 6))
+    x = Conv2D(64, 7, strides=(2, 2), padding='same')(inputs[..., :3])
+    x = BatchNormalization()(x)
+    x = ReLU()(x)
+    x = MaxPool2D(pool_size=(3, 3), strides=(2, 2), padding='same')(x)
+    x = stage(x, filters_1=64, filters_2=256, strides=(1, 1), conv_block_num=3)
+    x = stage(x, filters_1=128, filters_2=512, strides=(2, 2), conv_block_num=4)
+    x = stage(x, filters_1=256, filters_2=1024, strides=(2, 2), conv_block_num=23)
+    x = stage(x, filters_1=512, filters_2=2048, strides=(2, 2), conv_block_num=3)
+    gx1 = GlobalAveragePooling2D()(x)
+
+    x = Conv2D(64, 7, strides=(2, 2), padding='same')(inputs[..., 3:])
+    x = BatchNormalization()(x)
+    x = ReLU()(x)
+    x = MaxPool2D(pool_size=(3, 3), strides=(2, 2), padding='same')(x)
+    x = stage(x, filters_1=64, filters_2=256, strides=(1, 1), conv_block_num=3)
+    x = stage(x, filters_1=128, filters_2=512, strides=(2, 2), conv_block_num=4)
+    x = stage(x, filters_1=256, filters_2=1024, strides=(2, 2), conv_block_num=23)
+    x = stage(x, filters_1=512, filters_2=2048, strides=(2, 2), conv_block_num=3)
+    gx2 = GlobalAveragePooling2D()(x)
+
+    x = Concatenate()([gx1, gx2])
+    x = Dropout(rate=0.5)(x)
+    outputs = Dense(units=class_num, activation='softmax')(x)
+    model = Model(inputs=inputs, outputs=outputs)
     return model
 # tf.keras.utils.plot_model(model, to_file='ResNet_DIY.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
