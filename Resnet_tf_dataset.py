@@ -271,7 +271,8 @@ val_dataset = val_dataset.repeat()
 # # Fine tune or Retrain ResNet101
 # import resnet
 # base_model = ResNet101(weights='imagenet', include_top=True)
-model = ResnetDIY.resnet101_3_3(class_num=class_num, channel=channel)
+model = load_model()
+# model = ResnetDIY.resnet101_3_3(class_num=class_num, channel=channel)
 # base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-4/lr1e-4-ckpt-epoch0059_loss-0.0603_accuracy-0.9831_val_loss-4.1679_val_accuracy-0.7912')
 # model = Model(inputs=model.input, outputs=model.layers[-3].output)
 # add a global average pooling layer
@@ -283,16 +284,16 @@ model = ResnetDIY.resnet101_3_3(class_num=class_num, channel=channel)
 # model = Model(inputs=base_model.input, outputs=predictions)
 # base_model.save('E:/Model/AWA2/tfrecord/none/imagenet')
 # model = load_model('E:/Model/AWA2/tfrecord/none/imagenet')
-tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
-                          rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
+# tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
+#                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
 # for layer in model.layers[:-2]:
 #     layer.trainable = False
 # for layer in model.layers[-2:]:
 #     layer.trainable = True
 
-model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False)
-              , loss='categorical_crossentropy', metrics=['accuracy'])
+# model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.5, nesterov=False)
+#               , loss='categorical_crossentropy', metrics=['accuracy'])
 
 STEP_SIZE_TRAIN = math.ceil(train_cardinality // train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality // val_batch_size)
@@ -314,13 +315,14 @@ epochs = 300
 
 # a = model.layers[-1].weights[0][0]
 # a2 = model.layers[-6].weights[0][0]
-model.fit(train_dataset,
-          epochs=epochs,
-          steps_per_epoch=STEP_SIZE_TRAIN,
-          validation_data=val_dataset,
-          validation_steps=STEP_SIZE_VALID,
-          callbacks=[model_checkpoint]
-          )
+# model.fit(train_dataset,
+#           epochs=epochs,
+#           steps_per_epoch=STEP_SIZE_TRAIN,
+#           validation_data=val_dataset,
+#           validation_steps=STEP_SIZE_VALID,
+#           callbacks=[model_checkpoint]
+#           )
+model.evaluate(val_dataset)
 # b = model.layers[-1].weights[0][0]
 # b2 = model.layers[-6].weights[0][0]
 # c = 0
