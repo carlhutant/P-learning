@@ -59,6 +59,22 @@ def resnet101(class_num: int, channel: int):
     return model
 
 
+def resnet50(class_num: int, channel: int):
+    Inputs = Input(shape=(224, 224, channel))
+    x = Conv2D(64, 7, strides=(2, 2), padding='same')(Inputs)
+    x = BatchNormalization()(x)
+    x = ReLU()(x)
+    x = MaxPool2D(pool_size=(3, 3), strides=(2, 2), padding='same')(x)
+    x = stage(x, filters_1=64, filters_2=256, strides=(1, 1), conv_block_num=3)
+    x = stage(x, filters_1=128, filters_2=512, strides=(2, 2), conv_block_num=4)
+    x = stage(x, filters_1=256, filters_2=1024, strides=(2, 2), conv_block_num=6)
+    x = stage(x, filters_1=512, filters_2=2048, strides=(2, 2), conv_block_num=3)
+    x = GlobalAveragePooling2D()(x)
+    Outputs = Dense(units=class_num, activation='softmax')(x)
+    model = Model(inputs=Inputs, outputs=Outputs)
+    return model
+
+
 def resnet101_3_3(class_num: int, channel: int):
     inputs = Input(shape=(224, 224, 6))
     x = Conv2D(64, 7, strides=(2, 2), padding='same')(inputs[..., :3])

@@ -7,9 +7,8 @@ import random
 import math
 
 import tensorflow.keras.models
-
 import ResnetDIY
-
+import tensorflow_addons as tfa
 from tensorflow import keras
 from tensorflow.keras import optimizers
 from tensorflow.keras.optimizers import Adam
@@ -259,19 +258,19 @@ train_dataset.apply(tf.data.experimental.assert_cardinality(train_cardinality))
 val_dataset.apply(tf.data.experimental.assert_cardinality(val_cardinality))
 train_dataset = train_dataset.map(example_parse_decode)
 val_dataset = val_dataset.map(example_parse_decode)
-# train_dataset = train_dataset.map(lambda img, label: (random_crop(img, train_config), label))
-# val_dataset = val_dataset.map(lambda img, label: (random_crop(img, val_config), label))
-# train_dataset = train_dataset.map(lambda img, label: (channel_swap(img, train_config), label))
-# val_dataset = val_dataset.map(lambda img, label: (channel_swap(img, val_config), label))
-# train_dataset = train_dataset.map(diy_normalizing)
-# val_dataset = val_dataset.map(diy_normalizing)
-
-train_dataset = train_dataset.map(lambda img, label: (random_plus2_crop(img, train_config), label))
-val_dataset = val_dataset.map(lambda img, label: (random_plus2_crop(img, val_config), label))
+train_dataset = train_dataset.map(lambda img, label: (random_crop(img, train_config), label))
+val_dataset = val_dataset.map(lambda img, label: (random_crop(img, val_config), label))
 train_dataset = train_dataset.map(lambda img, label: (channel_swap(img, train_config), label))
 val_dataset = val_dataset.map(lambda img, label: (channel_swap(img, val_config), label))
-train_dataset = train_dataset.map(lambda img, label: (combine_6ch_and_normalizing(img, train_config), label))
-val_dataset = val_dataset.map(lambda img, label: (combine_6ch_and_normalizing(img, val_config), label))
+train_dataset = train_dataset.map(lambda img, label: (diy_normalizing(img, 'default'), label))
+val_dataset = val_dataset.map(lambda img, label: (diy_normalizing(img, 'default'), label))
+
+# train_dataset = train_dataset.map(lambda img, label: (random_plus2_crop(img, train_config), label))
+# val_dataset = val_dataset.map(lambda img, label: (random_plus2_crop(img, val_config), label))
+# train_dataset = train_dataset.map(lambda img, label: (channel_swap(img, train_config), label))
+# val_dataset = val_dataset.map(lambda img, label: (channel_swap(img, val_config), label))
+# train_dataset = train_dataset.map(lambda img, label: (combine_6ch_and_normalizing(img, train_config), label))
+# val_dataset = val_dataset.map(lambda img, label: (combine_6ch_and_normalizing(img, val_config), label))
 
 train_dataset = train_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
 val_dataset = val_dataset.shuffle(buffer_size=1000, reshuffle_each_iteration=True)
@@ -299,7 +298,7 @@ val_dataset = val_dataset.repeat()
 # # Fine tune or Retrain ResNet101
 # import resnet
 # base_model = ResNet101(weights='imagenet', include_top=True)
-model = load_model("/media/uscc/HDD1/carl/Model/AWA2/tfrecord/none_color_diff_121_abs_3ch/random_crop/no_dropout/lr1e-1-ckpt-epoch0050_loss-15.3944_accuracy-0.9452_val_loss-19.5259_val_accuracy-0.7952")
+# model = load_model("/media/uscc/HDD1/carl/Model/AWA2/tfrecord/none_color_diff_121_abs_3ch/random_crop/no_dropout/lr1e-1-ckpt-epoch0050_loss-15.3944_accuracy-0.9452_val_loss-19.5259_val_accuracy-0.7952")
 # model = load_model(ckpt_dir + "lr1e-2/lr1e-2-ckpt-epoch0016_loss-0.7403_accuracy-0.8164_val_loss-1.9177_val_accuracy-0.6218")
 # model = load_model("/media/uscc/HDD1/carl/Model/AWA2/tfrecord/none/random_crop/lr1e-1-ckpt-epoch0015_loss-1.6007_accuracy-0.6290_val_loss-2.7365_val_accuracy-0.5600")
 # model1 = load_model("/media/uscc/HDD1/carl/Model/AWA2/tfrecord/none/random_crop/lr1e-1-ckpt-epoch0200_loss-0.1270_accuracy-0.9619_val_loss-5.9098_val_accuracy-0.7719")
@@ -316,7 +315,7 @@ model = load_model("/media/uscc/HDD1/carl/Model/AWA2/tfrecord/none_color_diff_12
 # tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_dtype=True, show_layer_names=True,
 #                           rankdir="TB", expand_nested=False, dpi=96, )  # 儲存模型圖
 
-# model = ResnetDIY.resnet101(class_num=class_num, channel=channel)
+model = ResnetDIY.resnet50(class_num=class_num, channel=channel)
 # model = ResnetDIY.resnet101(class_num=class_num, channel=6)
 # base_model = tensorflow.keras.models.load_model(ckpt_dir + 'lr1e-4/lr1e-4-ckpt-epoch0059_loss-0.0603_accuracy-0.9831_val_loss-4.1679_val_accuracy-0.7912')
 # model = Model(inputs=model.input, outputs=model.layers[-3].output)
@@ -337,16 +336,16 @@ model = load_model("/media/uscc/HDD1/carl/Model/AWA2/tfrecord/none_color_diff_12
 # for layer in model.layers[-1:]:
 #     layer.trainable = True
 
-model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.9, nesterov=False),
+model.compile(optimizer=tfa.optimizers.SGDW(learning_rate=0.1, weight_decay=0.0001, momentum=0.9, nesterov=False),
               loss='categorical_crossentropy', metrics=['accuracy'])
 
 STEP_SIZE_TRAIN = math.ceil(train_cardinality // train_batch_size)
 STEP_SIZE_VALID = math.ceil(val_cardinality // val_batch_size)
 
-# STEP_SIZE_TRAIN = 20
-# STEP_SIZE_VALID = 20
+# STEP_SIZE_TRAIN = 1
+# STEP_SIZE_VALID = 1
 
-model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-1-ckpt-epoch{epoch:04d}'
+model_checkpoint = ModelCheckpoint(ckpt_dir + 'ckpt-epoch{epoch:04d}'
                                    + '_loss-{loss:.4f}'
                                    + '_accuracy-{accuracy:.4f}'
                                    + '_val_loss-{val_loss:.4f}'
@@ -354,6 +353,8 @@ model_checkpoint = ModelCheckpoint(ckpt_dir + 'lr1e-1-ckpt-epoch{epoch:04d}'
                                    save_weights_only=False,
                                    save_freq='epoch',
                                    verbose=0)
+LR = ReduceLROnPlateau(monitor='val_accuracy', factor=0.1, patience=10, verbose=1,
+                       mode='auto', min_delta=0.01, cooldown=0, min_lr=0)
 # early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 
 epochs = 300
@@ -366,7 +367,7 @@ model.fit(train_dataset,
           steps_per_epoch=STEP_SIZE_TRAIN,
           validation_data=val_dataset,
           validation_steps=STEP_SIZE_VALID,
-          callbacks=[model_checkpoint]
+          callbacks=[model_checkpoint, LR]
           )
 # model.evaluate(val_dataset, batch_size=val_batch_size)
 # b = model.layers[-1].weights[0][0]
