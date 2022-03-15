@@ -82,7 +82,7 @@ def resnet101_3_3(class_num: int, channel: int):
     gx2 = GlobalAveragePooling2D()(x)
 
     x = Concatenate()([gx1, gx2])
-    x = Dropout(rate=0.5)(x)
+    # x = Dropout(rate=0.5)(x)
     outputs = Dense(units=class_num, activation='softmax')(x)
     model = Model(inputs=inputs, outputs=outputs)
     return model
